@@ -23,6 +23,7 @@ Most small software businesses track delivery and business operations in separat
   - Who is responsible for a task?
   - How much commission is owed this month?
   - Which legal document version was sent to the client?
+  - Which software licenses or credentials are active for a project?
   - What delivery issues exist across external or legacy projects?
 
 ## 3. Product Goals
@@ -30,6 +31,7 @@ Most small software businesses track delivery and business operations in separat
 - Track software delivery work across bugs, features, and tasks.
 - Track project budgets, spending, and financial health.
 - Track team members, roles, assignments, and workload.
+- Track project software licenses, credentials, and renewal risk.
 - Track commissions with clear formulas and payout status.
 - Generate and manage reusable legal and commercial documents per project.
 - Consolidate selected delivery data from external systems through API integrations.
@@ -96,6 +98,7 @@ Current release scope:
 Current release scope:
 - Project create, list, and archive flows
 - Delivery-oriented status and deadline tracking
+- Multi-project workspace mockups for delivery, licenses, and legal operations
 
 ### 6.3 Development Workspace
 This is the core area inspired by the current project's development tab.
@@ -141,14 +144,19 @@ Current release scope:
 - Generate output for PDF export and document viewer rendering
 - Keep document version history, status, owner, and approval notes
 
-### 6.8 External Integrations
+### 6.8 Licenses And Credentials
+- Track software subscriptions, API keys, SSL certificates, and third-party access records per project
+- Store renewal dates, ownership, vendor references, and status signals
+- Surface renewal and rotation risks inside the project workspace and portfolio dashboard
+
+### 6.9 External Integrations
 - Connect to external project systems through API calls
 - Import or sync API documentation metadata for linked projects
 - Pull bug and task data from SQLite-backed systems through integration endpoints
 - Map external records into internal project views without losing source references
 - Track sync status, last run time, errors, and manual re-sync actions
 
-### 6.9 Activity Log
+### 6.10 Activity Log
 - Record important actions for auditability
 - Example: bug created, task reassigned, budget updated, commission approved, proposal exported, integration sync failed
 

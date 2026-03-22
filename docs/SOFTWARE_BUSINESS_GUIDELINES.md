@@ -122,6 +122,11 @@ Future domains such as development tracking, finance, legal, integrations, and r
 - Do not mix quotation, proposal, and agreement templates into one untyped document model without a document type field.
 - Approval and send states must be server-controlled because they affect auditability.
 
+### Licenses And Credentials
+- Track licenses, credentials, and certificates per project rather than as a global flat list.
+- Store references and renewal metadata in app records; keep actual secrets in secure storage.
+- Treat token rotation and expiration as audit-relevant operational events.
+
 ### External Integrations
 - Keep integration connection configuration separate from synced record storage.
 - Treat external bugs and tasks as source-backed records with stable source IDs.
@@ -137,6 +142,7 @@ Future domains such as development tracking, finance, legal, integrations, and r
 - `features`
 - `bugs`
 - `tasks`
+- `project_licenses`
 - `budget_plans`
 - `budget_entries`
 - `commission_rules`

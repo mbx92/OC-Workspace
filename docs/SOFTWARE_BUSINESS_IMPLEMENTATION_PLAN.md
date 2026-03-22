@@ -47,6 +47,8 @@ The next delivery phases expand this baseline into development, finance, legal, 
 - features
 - bugs
 - tasks
+- licenses and credentials
+- legal workspace access from the project detail page
 - activity logs
 - filtering, sorting, and saved views if time allows
 
@@ -105,8 +107,10 @@ Scope:
 - features CRUD
 - bugs CRUD
 - tasks CRUD
+- licenses register per project
+- legal workspace route per project
 - project detail page
-- development workspace with tabs for bugs, features, tasks
+- development workspace with tabs or linked views for bugs, features, tasks, licenses, and legal workspace
 - filters for project, assignee, status, priority, due date
 - activity logging for create, update, assign, and status changes
 
@@ -119,7 +123,7 @@ Acceptance criteria:
 
 Current status:
 - In progress only for project operations
-- Development workspace subdomains are not implemented yet
+- Multi-project mockup routes exist for project overview, legal workspace, and licenses
 
 ### Phase 2: Finance And Team Operations
 Goal: add financial visibility and ownership management.
