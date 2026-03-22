@@ -106,12 +106,12 @@
                   <tr v-for="template in filteredTemplates" :key="template.id">
                     <td>
                       <div class="font-medium text-base-content">{{ template.name }}</div>
-                      <div class="text-xs text-base-content/50">{{ template.projectScope }}</div>
+                      <div class="text-xs text-base-content/50">{{ template.documentType }}</div>
                     </td>
-                    <td class="uppercase text-sm text-base-content/75">{{ template.type }}</td>
-                    <td><span class="badge badge-outline" :class="templateStatusClass(template.status)">{{ template.status }}</span></td>
-                    <td class="text-sm text-base-content/75">{{ template.mergeFields.join(', ') }}</td>
-                    <td class="text-sm text-base-content/75">{{ template.lastUpdated }}</td>
+                    <td class="uppercase text-sm text-base-content/75">{{ template.documentType }}</td>
+                    <td><span class="badge badge-outline badge-success">Active</span></td>
+                    <td class="text-sm text-base-content/75">{{ template.templateFormat }}</td>
+                    <td class="text-sm text-base-content/75">{{ template.createdAt?.slice(0, 10) }}</td>
                   </tr>
                   <tr v-if="!filteredTemplates.length">
                     <td colspan="5" class="py-10 text-center text-sm text-base-content/55">No templates match the current filters.</td>
@@ -130,7 +130,7 @@
 
               <select v-model="documentFilters.project" class="select select-bordered select-sm w-full lg:w-44">
                 <option value="">All projects</option>
-                <option v-for="project in projectOptions" :key="project" :value="project">{{ project }}</option>
+                <option v-for="project in projectOptions" :key="project.id" :value="project.id">{{ project.name }}</option>
               </select>
 
               <select v-model="documentFilters.type" class="select select-bordered select-sm w-full lg:w-36">
@@ -167,17 +167,17 @@
                   <tr v-for="document in filteredDocuments" :key="document.id">
                     <td>
                       <NuxtLink :to="`/legal/${document.id}`" class="font-medium text-primary hover:underline">
-                        {{ document.name }}
+                        {{ document.title }}
                       </NuxtLink>
-                      <div class="text-xs text-base-content/50">{{ document.project }} - {{ document.client }}</div>
+                      <div class="text-xs text-base-content/50">{{ document.clientName || '-' }}</div>
                     </td>
-                    <td class="uppercase text-sm text-base-content/75">{{ document.type }}</td>
+                    <td class="uppercase text-sm text-base-content/75">{{ document.documentType }}</td>
                     <td><span class="badge badge-outline" :class="documentStatusClass(document.status)">{{ document.status }}</span></td>
-                    <td>{{ document.currentVersion }}</td>
-                    <td class="text-sm text-base-content/75">{{ document.exportTargets.join(', ') }}</td>
+                    <td>-</td>
+                    <td class="text-sm text-base-content/75">PDF</td>
                     <td>
-                      <div class="font-medium text-base-content">{{ document.owner }}</div>
-                      <div class="text-xs text-base-content/50">{{ document.updatedAt }}</div>
+                      <div class="font-medium text-base-content">{{ document.ownerId?.slice(0, 8) }}</div>
+                      <div class="text-xs text-base-content/50">{{ document.updatedAt?.slice(0, 10) }}</div>
                     </td>
                   </tr>
                   <tr v-if="!filteredDocuments.length">
@@ -220,7 +220,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="activeModal === 'template'"
       title="Add template"
       kicker="Legal"
@@ -229,27 +229,20 @@
     >
       <div class="grid gap-3">
         <input v-model="templateDraft.name" type="text" class="input input-bordered w-full" placeholder="Template name" />
-        <select v-model="templateDraft.type" class="select select-bordered w-full">
-          <option>quotation</option>
-          <option>proposal</option>
-          <option>agreement</option>
+        <select v-model="templateDraft.documentType" class="select select-bordered w-full">
+          <option value="quotation">Quotation</option>
+          <option value="proposal">Proposal</option>
+          <option value="agreement">Agreement</option>
         </select>
-        <select v-model="templateDraft.status" class="select select-bordered w-full">
-          <option>Active</option>
-          <option>Draft</option>
-          <option>Archived</option>
-        </select>
-        <input v-model="templateDraft.scope" type="text" class="input input-bordered w-full" placeholder="Scope label" />
-        <input v-model="templateDraft.mergeFields" type="text" class="input input-bordered w-full" placeholder="Merge fields, comma separated" />
       </div>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="activeModal = null">Cancel</button>
         <button type="button" class="btn btn-primary" @click="saveTemplate">Save template</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="activeModal === 'document'"
       title="Create document"
       kicker="Legal"
@@ -258,32 +251,27 @@
       width-class="max-w-3xl"
     >
       <div class="grid gap-3 md:grid-cols-2">
-        <input v-model="documentDraft.name" type="text" class="input input-bordered w-full md:col-span-2" placeholder="Document name" />
-        <input v-model="documentDraft.project" type="text" class="input input-bordered w-full" placeholder="Project name" />
-        <input v-model="documentDraft.client" type="text" class="input input-bordered w-full" placeholder="Client name" />
-        <select v-model="documentDraft.type" class="select select-bordered w-full">
-          <option>quotation</option>
-          <option>proposal</option>
-          <option>agreement</option>
+        <input v-model="documentDraft.title" type="text" class="input input-bordered w-full md:col-span-2" placeholder="Document title" />
+        <select v-model="documentDraft.projectId" class="select select-bordered w-full">
+          <option v-for="project in projectOptions" :key="project.id" :value="project.id">{{ project.name }}</option>
+        </select>
+        <input v-model="documentDraft.clientName" type="text" class="input input-bordered w-full" placeholder="Client name" />
+        <select v-model="documentDraft.documentType" class="select select-bordered w-full">
+          <option value="quotation">Quotation</option>
+          <option value="proposal">Proposal</option>
+          <option value="agreement">Agreement</option>
         </select>
         <select v-model="documentDraft.templateId" class="select select-bordered w-full">
+          <option value="">No template</option>
           <option v-for="template in templates" :key="template.id" :value="template.id">{{ template.name }}</option>
         </select>
-        <select v-model="documentDraft.status" class="select select-bordered w-full">
-          <option>draft</option>
-          <option>in-review</option>
-          <option>approved</option>
-          <option>sent</option>
-        </select>
-        <input v-model="documentDraft.owner" type="text" class="input input-bordered w-full" placeholder="Owner" />
-        <textarea v-model="documentDraft.summary" class="textarea textarea-bordered h-24 w-full md:col-span-2" placeholder="Document summary"></textarea>
       </div>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="activeModal = null">Cancel</button>
         <button type="button" class="btn btn-primary" @click="saveDocument">Save document</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -298,33 +286,17 @@ import {
   IconTemplate,
 } from '@tabler/icons-vue'
 
-import {
-  legalDocumentActivities,
-  legalDocumentExports,
-  legalDocumentVersions,
-  legalDocuments,
-  legalTemplates,
-  type LegalDocument,
-  type LegalTemplate,
-} from '~/data/legal'
-import { appendAuditEntry } from '~/data/audit'
-
 definePageMeta({ layout: 'default' })
 
 const activeTab = ref<'templates' | 'documents'>('documents')
 const activeModal = ref<null | 'template' | 'document'>(null)
-const templates = reactive<LegalTemplate[]>(
-  legalTemplates.map((template) => ({
-    ...template,
-    mergeFields: [...template.mergeFields],
-  })),
-)
-const documents = reactive<LegalDocument[]>(
-  legalDocuments.map((document) => ({
-    ...document,
-    exportTargets: [...document.exportTargets],
-  })),
-)
+
+const { data: templatesData, refresh: refreshTemplates } = await useFetch('/api/legal/templates')
+const { data: documentsData, refresh: refreshDocuments } = await useFetch('/api/legal/documents')
+const { data: projects } = await useFetch('/api/projects')
+
+const templates = computed(() => templatesData.value || [])
+const documents = computed(() => documentsData.value || [])
 
 const templateFilters = reactive({
   query: '',
@@ -341,86 +313,65 @@ const documentFilters = reactive({
 
 const templateDraft = reactive({
   name: '',
-  type: 'proposal' as LegalTemplate['type'],
-  status: 'Active' as LegalTemplate['status'],
-  scope: '',
-  mergeFields: 'project_name, client_name, pricing',
+  documentType: 'proposal' as string,
+  templateFormat: 'html',
 })
 
 const documentDraft = reactive({
-  name: '',
-  project: '',
-  client: '',
-  type: 'proposal' as LegalDocument['type'],
-  templateId: 'tpl-101',
-  status: 'draft' as LegalDocument['status'],
-  owner: '',
-  summary: '',
+  projectId: '',
+  templateId: '',
+  documentType: 'proposal' as string,
+  title: '',
+  clientName: '',
 })
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
-const projectOptions = computed(() => Array.from(new Set(documents.map((document) => document.project))).sort())
+const projectOptions = computed(() => (projects.value || []).map((p: any) => ({ id: p.id, name: p.name })))
 
 const filteredTemplates = computed(() =>
-  templates.filter((template) => {
+  templates.value.filter((template: any) => {
     const query = templateFilters.query.trim().toLowerCase()
-    const matchesQuery = !query || [
-      template.name,
-      template.projectScope,
-      template.mergeFields.join(' '),
-    ].some((value) => value.toLowerCase().includes(query))
-    const matchesType = !templateFilters.type || template.type === templateFilters.type
-    const matchesStatus = !templateFilters.status || template.status === templateFilters.status
-    return matchesQuery && matchesType && matchesStatus
+    const matchesQuery = !query || [template.name, template.documentType].some((value) => value?.toLowerCase().includes(query))
+    const matchesType = !templateFilters.type || template.documentType === templateFilters.type
+    return matchesQuery && matchesType
   }),
 )
 
 const filteredDocuments = computed(() =>
-  documents.filter((document) => {
+  documents.value.filter((document: any) => {
     const query = documentFilters.query.trim().toLowerCase()
-    const matchesQuery = !query || [
-      document.name,
-      document.project,
-      document.client,
-      document.summary,
-      document.owner,
-    ].some((value) => value.toLowerCase().includes(query))
-    const matchesProject = !documentFilters.project || document.project === documentFilters.project
-    const matchesType = !documentFilters.type || document.type === documentFilters.type
+    const matchesQuery = !query || [document.title, document.clientName, document.documentType].some((value: string) => value?.toLowerCase().includes(query))
+    const matchesProject = !documentFilters.project || document.projectId === documentFilters.project
+    const matchesType = !documentFilters.type || document.documentType === documentFilters.type
     const matchesStatus = !documentFilters.status || document.status === documentFilters.status
     return matchesQuery && matchesProject && matchesType && matchesStatus
   }),
 )
 
 const legalStats = computed(() => ({
-  activeTemplates: templates.filter((template) => template.status === 'Active').length,
-  draftTemplates: templates.filter((template) => template.status === 'Draft').length,
-  openDocuments: documents.filter((document) => document.status !== 'archived').length,
-  pendingApproval: documents.filter((document) => document.status === 'in-review').length,
-  sentDocuments: documents.filter((document) => document.status === 'sent').length,
-  signedDocuments: documents.filter((document) => document.status === 'signed').length,
-  exports: Object.values(legalDocumentExports).reduce((sum, items) => sum + items.length, 0),
-  auditAlerts:
-    documents.filter((document) => document.status === 'in-review' || document.status === 'sent').length,
+  activeTemplates: templates.value.length,
+  draftTemplates: 0,
+  openDocuments: documents.value.filter((d: any) => d.status !== 'archived').length,
+  pendingApproval: documents.value.filter((d: any) => d.status === 'in-review').length,
+  sentDocuments: documents.value.filter((d: any) => d.status === 'sent').length,
+  signedDocuments: documents.value.filter((d: any) => d.status === 'signed').length,
+  exports: 0,
+  auditAlerts: documents.value.filter((d: any) => d.status === 'in-review' || d.status === 'sent').length,
 }))
 
 const priorityAlert = computed(() => {
-  const document = documents.find((item) => item.status === 'in-review') || documents.find((item) => item.status === 'sent')
-  return document
-    ? `${document.name} currently sits in ${document.status} with current version ${document.currentVersion}.`
-    : ''
+  const document = documents.value.find((item: any) => item.status === 'in-review') || documents.value.find((item: any) => item.status === 'sent')
+  return document ? `${(document as any).title} currently sits in ${(document as any).status}.` : ''
 })
 
-function templateStatusClass(status: LegalTemplate['status']) {
+function templateStatusClass(status: string) {
   return {
-    'badge-success': status === 'Active',
-    'badge-warning': status === 'Draft',
-    'badge-neutral': status === 'Archived',
+    'badge-success': true,
   }
 }
 
-function documentStatusClass(status: LegalDocument['status']) {
+function documentStatusClass(status: string) {
   return {
     'badge-neutral': status === 'draft',
     'badge-warning': status === 'in-review',
@@ -442,131 +393,63 @@ function openTemplateModal() {
 
 function openDocumentModal() {
   activeTab.value = 'documents'
+  if (projects.value?.length) documentDraft.projectId = (projects.value as any[])[0].id
+  if (templates.value?.length) documentDraft.templateId = (templates.value as any[])[0].id
   activeModal.value = 'document'
 }
 
-function saveTemplate() {
-  if (!templateDraft.name.trim() || !templateDraft.scope.trim()) {
-    showMessage('error', 'Template name and scope are required.')
+async function saveTemplate() {
+  if (!templateDraft.name.trim()) {
+    showMessage('error', 'Template name is required.')
     return
   }
 
-  const newTemplate: LegalTemplate = {
-    id: `tpl-${templates.length + 201}`,
-    name: templateDraft.name.trim(),
-    type: templateDraft.type,
-    status: templateDraft.status,
-    mergeFields: templateDraft.mergeFields.split(',').map((item) => item.trim()).filter(Boolean),
-    projectScope: templateDraft.scope.trim(),
-    lastUpdated: '2026-03-21 10:30',
+  try {
+    await $fetch('/api/legal/templates', {
+      method: 'POST',
+      body: {
+        name: templateDraft.name.trim(),
+        documentType: templateDraft.documentType,
+        templateFormat: templateDraft.templateFormat,
+      },
+    })
+
+    await refreshTemplates()
+    showMessage('success', 'Legal template saved.')
+    templateDraft.name = ''
+    templateDraft.documentType = 'proposal'
+    activeModal.value = null
+  } catch (err: any) {
+    showMessage('error', err?.data?.statusMessage || 'Failed to save template.')
   }
-
-  templates.unshift(newTemplate)
-  legalTemplates.unshift({
-    ...newTemplate,
-    mergeFields: [...newTemplate.mergeFields],
-  })
-
-  appendAuditEntry({
-    actorUserId: 'legal.ops@signaltribe.dev',
-    module: 'legal',
-    project: newTemplate.projectScope,
-    entityType: 'legal-template',
-    entityId: newTemplate.id,
-    action: 'record created',
-    summary: `${newTemplate.name} template created for ${newTemplate.projectScope}.`,
-    severity: newTemplate.status === 'Draft' ? 'warning' : 'info',
-    beforeJson: null,
-    afterJson: {
-      type: newTemplate.type,
-      status: newTemplate.status,
-      mergeFields: newTemplate.mergeFields,
-    },
-  })
-
-  showMessage('success', 'Legal template saved.')
-  templateDraft.name = ''
-  templateDraft.scope = ''
-  templateDraft.type = 'proposal'
-  templateDraft.status = 'Active'
-  templateDraft.mergeFields = 'project_name, client_name, pricing'
-  activeModal.value = null
 }
 
-function saveDocument() {
-  if (!documentDraft.name.trim() || !documentDraft.project.trim() || !documentDraft.client.trim() || !documentDraft.owner.trim()) {
-    showMessage('error', 'Document name, project, client, and owner are required.')
+async function saveDocument() {
+  if (!documentDraft.title.trim() || !documentDraft.projectId) {
+    showMessage('error', 'Document title and project are required.')
     return
   }
 
-  const newDocument: LegalDocument = {
-    id: `doc-${documents.length + 201}`,
-    name: documentDraft.name.trim(),
-    project: documentDraft.project.trim(),
-    client: documentDraft.client.trim(),
-    type: documentDraft.type,
-    status: documentDraft.status,
-    templateId: documentDraft.templateId,
-    currentVersion: 'v1.0',
-    owner: documentDraft.owner.trim(),
-    updatedAt: '2026-03-21 10:35',
-    summary: documentDraft.summary.trim() || 'New legal document generated from selected template.',
-    exportTargets: ['pdf'],
+  try {
+    await $fetch('/api/legal/documents', {
+      method: 'POST',
+      body: {
+        projectId: documentDraft.projectId,
+        templateId: documentDraft.templateId || undefined,
+        documentType: documentDraft.documentType,
+        title: documentDraft.title.trim(),
+        clientName: documentDraft.clientName.trim() || undefined,
+      },
+    })
+
+    await refreshDocuments()
+    showMessage('success', 'Legal document saved.')
+    documentDraft.title = ''
+    documentDraft.clientName = ''
+    documentDraft.documentType = 'proposal'
+    activeModal.value = null
+  } catch (err: any) {
+    showMessage('error', err?.data?.statusMessage || 'Failed to save document.')
   }
-
-  documents.unshift(newDocument)
-  legalDocuments.unshift({
-    ...newDocument,
-    exportTargets: [...newDocument.exportTargets],
-  })
-  legalDocumentVersions[newDocument.id] = [
-    {
-      id: `ver-${newDocument.id}`,
-      versionLabel: 'v1.0',
-      createdAt: '2026-03-21 10:35',
-      createdBy: newDocument.owner,
-      note: 'Initial generated version from selected template.',
-      locked: false,
-    },
-  ]
-  legalDocumentExports[newDocument.id] = []
-  legalDocumentActivities[newDocument.id] = [
-    {
-      id: `act-${newDocument.id}`,
-      action: 'document created',
-      actor: newDocument.owner,
-      timestamp: '2026-03-21 10:35',
-      detail: 'Document created from global legal workspace.',
-    },
-  ]
-
-  appendAuditEntry({
-    actorUserId: 'legal.ops@signaltribe.dev',
-    module: 'legal',
-    project: newDocument.project,
-    entityType: 'legal-document',
-    entityId: newDocument.id,
-    action: 'record created',
-    summary: `${newDocument.name} generated from template ${newDocument.templateId}.`,
-    severity: newDocument.status === 'approved' || newDocument.status === 'sent' ? 'warning' : 'info',
-    beforeJson: null,
-    afterJson: {
-      status: newDocument.status,
-      currentVersion: newDocument.currentVersion,
-      owner: newDocument.owner,
-      templateId: newDocument.templateId,
-    },
-  })
-
-  showMessage('success', 'Legal document saved.')
-  documentDraft.name = ''
-  documentDraft.project = ''
-  documentDraft.client = ''
-  documentDraft.type = 'proposal'
-  documentDraft.templateId = templates[0]?.id || 'tpl-101'
-  documentDraft.status = 'draft'
-  documentDraft.owner = ''
-  documentDraft.summary = ''
-  activeModal.value = null
 }
 </script>

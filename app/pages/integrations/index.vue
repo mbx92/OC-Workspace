@@ -64,7 +64,7 @@
 
             <select v-model="filters.project" class="select select-bordered select-sm w-full lg:w-44">
               <option value="">All projects</option>
-              <option v-for="project in projectOptions" :key="project" :value="project">{{ project }}</option>
+              <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
 
             <select v-model="filters.provider" class="select select-bordered select-sm w-full lg:w-40">
@@ -74,9 +74,9 @@
 
             <select v-model="filters.status" class="select select-bordered select-sm w-full lg:w-36">
               <option value="">All statuses</option>
-              <option>Active</option>
-              <option>Paused</option>
-              <option>Error</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="error">Error</option>
             </select>
           </div>
 
@@ -86,11 +86,9 @@
                 <tr>
                   <th>Connection</th>
                   <th>Project</th>
-                  <th>Scope</th>
                   <th>Auth</th>
                   <th>Status</th>
-                  <th>Last Sync</th>
-                  <th>Records</th>
+                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,28 +97,19 @@
                     <NuxtLink :to="`/integrations/${connection.id}`" class="font-medium text-primary hover:underline">
                       {{ connection.name }}
                     </NuxtLink>
-                    <div class="text-xs text-base-content/50">{{ connection.provider }} - {{ connection.baseUrl }}</div>
+                    <div class="text-xs text-base-content/50">{{ connection.providerType }} - {{ connection.baseUrl }}</div>
                   </td>
                   <td>
-                    <div class="font-medium text-base-content">{{ connection.project }}</div>
-                    <div class="text-xs text-base-content/50">{{ connection.docsRef }}</div>
+                    <div class="font-medium text-base-content">{{ connection.projectId?.slice(0, 8) || '—' }}</div>
                   </td>
-                  <td class="text-sm text-base-content/75">{{ connection.scope.join(', ') }}</td>
-                  <td>
-                    <div class="font-medium text-base-content">{{ connection.authMode }}</div>
-                    <div class="text-xs text-base-content/50">{{ connection.readOnly ? 'Read only' : 'Write enabled' }}</div>
-                  </td>
+                  <td class="text-sm text-base-content/75">{{ connection.authType }}</td>
                   <td>
                     <span class="badge badge-outline" :class="statusBadgeClass(connection.status)">{{ connection.status }}</span>
                   </td>
-                  <td class="text-sm text-base-content/75">{{ connection.lastSync }}</td>
-                  <td class="text-sm text-base-content/75">
-                    <div>{{ connection.importedBugs }} bugs</div>
-                    <div>{{ connection.importedTasks }} tasks</div>
-                  </td>
+                  <td class="text-sm text-base-content/75">{{ connection.createdAt?.slice(0, 10) || '—' }}</td>
                 </tr>
                 <tr v-if="!filteredConnections.length">
-                  <td colspan="7" class="py-10 text-center text-sm text-base-content/55">No integrations match the current filters.</td>
+                  <td colspan="5" class="py-10 text-center text-sm text-base-content/55">No integrations match the current filters.</td>
                 </tr>
               </tbody>
             </table>
@@ -180,7 +169,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isConnectionModalOpen"
       title="Add connection"
       kicker="Integrations"
@@ -189,35 +178,33 @@
     >
       <div class="grid gap-3">
         <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Connection name" />
-        <input v-model="draft.project" type="text" class="input input-bordered w-full" placeholder="Project name" />
-        <select v-model="draft.provider" class="select select-bordered w-full">
-          <option>Internal REST</option>
-          <option>Connector Service</option>
-          <option>Partner API</option>
+        <select v-model="draft.projectId" class="select select-bordered w-full">
+          <option value="">No project</option>
+          <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+        <select v-model="draft.providerType" class="select select-bordered w-full">
+          <option value="rest_api">REST API</option>
+          <option value="graphql">GraphQL</option>
+          <option value="webhook">Webhook</option>
+          <option value="database">Database</option>
+          <option value="file_import">File Import</option>
+          <option value="custom">Custom</option>
         </select>
         <input v-model="draft.baseUrl" type="url" class="input input-bordered w-full" placeholder="Base URL" />
-        <select v-model="draft.authMode" class="select select-bordered w-full">
-          <option>Bearer Token</option>
-          <option>API Key</option>
-          <option>Basic Auth</option>
+        <select v-model="draft.authType" class="select select-bordered w-full">
+          <option value="none">None</option>
+          <option value="api_key">API Key</option>
+          <option value="bearer_token">Bearer Token</option>
+          <option value="basic_auth">Basic Auth</option>
+          <option value="oauth2">OAuth2</option>
         </select>
-        <select v-model="draft.status" class="select select-bordered w-full">
-          <option>Active</option>
-          <option>Paused</option>
-          <option>Error</option>
-        </select>
-        <input v-model="draft.scope" type="text" class="input input-bordered w-full" placeholder="Scope, comma separated" />
-        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-3 py-2">
-          <input v-model="draft.readOnly" type="checkbox" class="checkbox checkbox-sm" />
-          <span class="label-text">Read-only integration</span>
-        </label>
       </div>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="closeConnectionModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="saveConnection">Save connection</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -232,23 +219,11 @@ import {
   IconRefreshAlert,
 } from '@tabler/icons-vue'
 
-import {
-  integrationConnections,
-  integrationImportedRecords,
-  integrationMappings,
-  integrationSyncJobs,
-  type IntegrationConnection,
-} from '~/data/integrations'
-import { appendAuditEntry } from '~/data/audit'
-
 definePageMeta({ layout: 'default' })
 
-const connections = reactive<IntegrationConnection[]>(
-  integrationConnections.map((connection) => ({
-    ...connection,
-    scope: [...connection.scope],
-  })),
-)
+const { data: connectionsData, refresh: refreshConnections } = await useFetch('/api/integrations')
+
+const connections = computed(() => connectionsData.value || [])
 
 const filters = reactive({
   query: '',
@@ -259,79 +234,65 @@ const filters = reactive({
 
 const draft = reactive({
   name: '',
-  project: '',
-  provider: 'Internal REST',
+  projectId: '',
+  providerType: 'rest_api',
   baseUrl: '',
-  authMode: 'Bearer Token' as IntegrationConnection['authMode'],
-  status: 'Active' as IntegrationConnection['status'],
-  scope: 'Metadata, Bugs, Tasks',
-  readOnly: true,
+  authType: 'none' as string,
 })
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const isConnectionModalOpen = ref(false)
 
-const projectOptions = computed(() => Array.from(new Set(connections.map((connection) => connection.project))).sort())
-const providerOptions = computed(() => Array.from(new Set(connections.map((connection) => connection.provider))).sort())
+const { data: projects } = await useFetch('/api/projects')
+
+const projectOptions = computed(() => (projects.value || []).map((p: any) => ({ id: p.id, name: p.name })))
+const providerOptions = computed(() => Array.from(new Set(connections.value.map((c: any) => c.providerType))).filter(Boolean).sort())
 
 const filteredConnections = computed(() =>
-  connections.filter((connection) => {
+  connections.value.filter((connection: any) => {
     const query = filters.query.trim().toLowerCase()
     const matchesQuery = !query || [
       connection.name,
-      connection.project,
-      connection.provider,
+      connection.providerType,
       connection.baseUrl,
-      connection.docsRef,
-    ].some((value) => value.toLowerCase().includes(query))
-    const matchesProject = !filters.project || connection.project === filters.project
-    const matchesProvider = !filters.provider || connection.provider === filters.provider
+    ].some((value: string) => value?.toLowerCase().includes(query))
+    const matchesProject = !filters.project || connection.projectId === filters.project
+    const matchesProvider = !filters.provider || connection.providerType === filters.provider
     const matchesStatus = !filters.status || connection.status === filters.status
     return matchesQuery && matchesProject && matchesProvider && matchesStatus
   }),
 )
 
-const flattenedJobs = computed(() =>
-  connections
-    .flatMap((connection) =>
-      (integrationSyncJobs[connection.id] || []).map((job) => ({
-        ...job,
-        connectionName: connection.name,
-      })),
-    )
-    .sort((left, right) => right.startedAt.localeCompare(left.startedAt)),
-)
-
-const recentJobs = computed(() => flattenedJobs.value.slice(0, 4))
+const recentJobs = ref<any[]>([])
 
 const integrationStats = computed(() => ({
-  activeConnections: connections.filter((connection) => connection.status === 'Active').length,
-  pausedConnections: connections.filter((connection) => connection.status === 'Paused').length,
-  errorConnections: connections.filter((connection) => connection.status === 'Error').length,
-  attentionJobs: flattenedJobs.value.filter((job) => job.status === 'failed' || job.status === 'partial').length,
-  importedRecords: connections.reduce((sum, connection) => sum + connection.importedBugs + connection.importedTasks, 0),
-  mappedFields: connections.reduce((sum, connection) => sum + connection.mappedFields, 0),
+  activeConnections: connections.value.filter((c: any) => c.status === 'active').length,
+  pausedConnections: connections.value.filter((c: any) => c.status === 'paused').length,
+  errorConnections: connections.value.filter((c: any) => c.status === 'error').length,
+  attentionJobs: 0,
+  importedRecords: 0,
+  mappedFields: 0,
 }))
 
 const attentionAlert = computed(() => {
-  const connection = connections.find((item) => item.status === 'Error') || connections.find((item) => item.errorCount > 0)
+  const connection = connections.value.find((item: any) => item.status === 'error')
   return connection
-    ? `${connection.name} needs review. Latest sync state is ${connection.status.toLowerCase()} with ${connection.errorCount} unresolved connector issue.`
+    ? `${(connection as any).name} needs review. Connection state is error.`
     : ''
 })
 
-function statusBadgeClass(status: IntegrationConnection['status']) {
+function statusBadgeClass(status: string) {
   return {
-    'badge-success': status === 'Active',
-    'badge-warning': status === 'Paused',
-    'badge-error': status === 'Error',
+    'badge-success': status === 'active',
+    'badge-warning': status === 'paused',
+    'badge-error': status === 'error',
   }
 }
 
 function jobStatusClass(status: string) {
   return {
     'badge-info': status === 'queued' || status === 'running',
-    'badge-success': status === 'succeeded',
+    'badge-success': status === 'succeeded' || status === 'completed',
     'badge-warning': status === 'partial',
     'badge-error': status === 'failed',
   }
@@ -345,68 +306,33 @@ function closeConnectionModal() {
   isConnectionModalOpen.value = false
 }
 
-function saveConnection() {
-  if (!draft.name.trim() || !draft.project.trim() || !draft.baseUrl.trim()) {
-    showMessage('error', 'Connection name, project, and base URL are required.')
+async function saveConnection() {
+  if (!draft.name.trim() || !draft.providerType.trim()) {
+    showMessage('error', 'Connection name and provider type are required.')
     return
   }
 
-  const newConnection: IntegrationConnection = {
-    id: `int-${connections.length + 201}`,
-    name: draft.name.trim(),
-    project: draft.project.trim(),
-    provider: draft.provider,
-    baseUrl: draft.baseUrl.trim(),
-    authMode: draft.authMode,
-    status: draft.status,
-    readOnly: draft.readOnly,
-    scope: draft.scope.split(',').map((item) => item.trim()).filter(Boolean),
-    docsRef: 'Pending docs reference',
-    lastSync: 'Not synced yet',
-    importedBugs: 0,
-    importedTasks: 0,
-    mappedFields: 0,
-    errorCount: draft.status === 'Error' ? 1 : 0,
+  try {
+    await $fetch('/api/integrations', {
+      method: 'POST',
+      body: {
+        name: draft.name.trim(),
+        projectId: draft.projectId || undefined,
+        providerType: draft.providerType,
+        baseUrl: draft.baseUrl.trim() || undefined,
+        authType: draft.authType,
+      },
+    })
+
+    await refreshConnections()
+    showMessage('success', 'Integration connection saved.')
+    draft.name = ''
+    draft.projectId = ''
+    draft.baseUrl = ''
+    closeConnectionModal()
+  } catch (err: any) {
+    showMessage('error', err?.data?.statusMessage || 'Failed to save connection.')
   }
-
-  connections.unshift(newConnection)
-  integrationConnections.unshift({
-    ...newConnection,
-    scope: [...newConnection.scope],
-  })
-  integrationMappings[newConnection.id] = []
-  integrationImportedRecords[newConnection.id] = []
-  integrationSyncJobs[newConnection.id] = []
-
-  appendAuditEntry({
-    actorUserId: 'integrations.ops@signaltribe.dev',
-    module: 'integrations',
-    project: newConnection.project,
-    entityType: 'integration-connection',
-    entityId: newConnection.id,
-    action: 'record created',
-    summary: `${newConnection.name} connection added for ${newConnection.project}.`,
-    severity: newConnection.status === 'Error' ? 'warning' : 'info',
-    beforeJson: null,
-    afterJson: {
-      provider: newConnection.provider,
-      status: newConnection.status,
-      authMode: newConnection.authMode,
-      readOnly: newConnection.readOnly,
-      scope: newConnection.scope,
-    },
-  })
-
-  showMessage('success', 'Integration connection saved.')
-  draft.name = ''
-  draft.project = ''
-  draft.baseUrl = ''
-  draft.provider = 'Internal REST'
-  draft.authMode = 'Bearer Token'
-  draft.status = 'Active'
-  draft.scope = 'Metadata, Bugs, Tasks'
-  draft.readOnly = true
-  closeConnectionModal()
 }
 </script>
 

@@ -152,8 +152,8 @@
           <div class="min-w-0 flex-1 space-y-1">
             <div class="flex items-center justify-between gap-2">
               <div class="min-w-0 flex flex-wrap items-center gap-2">
-                <p class="truncate text-sm font-semibold text-base-content">{{ t('sidebar.loggedInUser') }}</p>
-                <div class="badge badge-success badge-outline badge-sm">{{ t('sidebar.loggedInStatus') }}</div>
+                <p class="truncate text-sm font-semibold text-base-content">{{ authUser?.name || t('sidebar.loggedInUser') }}</p>
+                <div class="badge badge-success badge-outline badge-sm">{{ authUser?.role || t('sidebar.loggedInStatus') }}</div>
               </div>
 
               <button
@@ -161,11 +161,12 @@
                 class="btn btn-ghost btn-circle btn-xs shrink-0"
                 :aria-label="t('sidebar.signOut')"
                 :title="t('sidebar.signOut')"
+                @click="handleLogout"
               >
                 <IconLogout2 class="h-4 w-4" />
               </button>
             </div>
-            <p class="text-xs leading-5 text-base-content/55">{{ t('sidebar.loggedInRole') }}</p>
+            <p class="text-xs leading-5 text-base-content/55">{{ authUser?.email || t('sidebar.loggedInRole') }}</p>
           </div>
         </div>
       </div>
@@ -205,6 +206,11 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useAppI18n()
+const { user: authUser, logout } = useAuth()
+
+function handleLogout() {
+  logout()
+}
 </script>
 
 <style scoped>

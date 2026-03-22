@@ -69,7 +69,7 @@
 
             <select v-model="filters.project" class="select select-bordered select-sm w-full lg:w-44">
               <option value="">{{ t('common.allProjects') }}</option>
-              <option v-for="project in projectOptions" :key="project" :value="project">{{ project }}</option>
+              <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
 
             <select v-model="filters.status" class="select select-bordered select-sm w-full lg:w-40">
@@ -237,7 +237,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isExportModalOpen"
       title="Create export bundle"
       kicker="Reports"
@@ -262,7 +262,7 @@
         <button type="button" class="btn btn-ghost" @click="closeExportModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="createExportBundle">Create bundle</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -275,10 +275,6 @@ import {
   IconShieldCheck,
 } from '@tabler/icons-vue'
 
-import { auditTrailEntries } from '~/data/audit'
-import { integrationConnections, integrationPayloadSnapshots, integrationSyncJobs } from '~/data/integrations'
-import { legalDocuments } from '~/data/legal'
-
 definePageMeta({ layout: 'default' })
 
 const { t } = useAppI18n()
@@ -289,6 +285,7 @@ type ActiveView = 'operations' | 'finance' | 'compliance'
 type ReportRow = {
   id: string
   project: string
+  projectId: string
   projectStatus: string
   assignee: string
   reviewDate: string
@@ -339,9 +336,174 @@ const filters = reactive({
   project: '',
   status: '',
   assignee: '',
-  dateFrom: '2026-03-21',
-  dateTo: '2026-04-15',
+  dateFrom: '',
+  dateTo: '',
 })
+
+// Fetch data from APIs
+const { data: projectsData } = await useFetch('/api/projects')
+const { data: commissionsData } = await useFetch('/api/commissions')
+const { data: legalDocsData } = await useFetch('/api/legal/documents')
+const { data: integrationsData } = await useFetch('/api/integrations')
+const { data: logsData } = await useFetch('/api/activity-logs')
+
+const projects = computed(() => (projectsData.value || []) as any[])
+const commissions = computed(() => (commissionsData.value || []) as any[])
+const legalDocs = computed(() => (legalDocsData.value || []) as any[])
+const integrations = computed(() => (integrationsData.value || []) as any[])
+const activityLogs = computed(() => (logsData.value || []) as any[])
+
+// Build report rows from live project data
+const reportRows = computed<ReportRow[]>(() =>
+  projects.value.map((project: any) => {
+    const projectCommissions = commissions.value.filter((c: any) => c.projectId === project.id)
+    const unpaid = projectCommissions
+      .filter((c: any) => c.status === 'pending' || c.status === 'approved')
+      .reduce((sum: number, c: any) => sum + (c.commissionAmount || 0), 0)
+    const projectIntegrations = integrations.value.filter((i: any) => i.projectId === project.id)
+    const hasError = projectIntegrations.some((i: any) => i.status === 'error')
+    const hasPartial = projectIntegrations.some((i: any) => i.status === 'paused')
+    const projectDocs = legalDocs.value.filter((d: any) => d.projectId === project.id)
+    const hasPendingLegal = projectDocs.some((d: any) => d.status === 'draft' || d.status === 'review')
+    const hasSentLegal = projectDocs.some((d: any) => d.status === 'sent')
+
+    const deliveryStatus: ReportRow['deliveryStatus'] =
+      project.status === 'on_hold' ? 'Blocked' : project.status === 'active' ? 'On Track' : 'At Risk'
+    const integrationStatus: ReportRow['integrationStatus'] =
+      hasError ? 'Failed' : hasPartial ? 'Partial' : 'Healthy'
+    const legalStatus: ReportRow['legalStatus'] =
+      hasSentLegal ? 'Pending Signature' : hasPendingLegal ? 'In Review' : 'Approved'
+
+    const reviewStatus: ReportRow['reviewStatus'] =
+      deliveryStatus === 'Blocked' || integrationStatus === 'Failed' ? 'Escalated'
+        : deliveryStatus === 'At Risk' || integrationStatus === 'Partial' || hasPendingLegal ? 'Needs Review'
+          : 'Stable'
+
+    return {
+      id: project.id,
+      project: project.name,
+      projectId: project.id,
+      projectStatus: project.status,
+      assignee: project.ownerId?.slice(0, 8) || '—',
+      reviewDate: project.updatedAt?.slice(0, 10) || '',
+      openItems: 0,
+      deliveryStatus,
+      financeStatus: 'Healthy' as const,
+      payoutStatus: unpaid > 0 ? 'Awaiting Approval' as const : 'Paid' as const,
+      legalStatus,
+      integrationStatus,
+      budgetVariance: 0,
+      unpaidCommission: unpaid,
+      note: '',
+      reviewStatus,
+      projectRoute: `/projects/${project.id}`,
+      financeRoute: '/finance',
+      integrationRoute: projectIntegrations[0] ? `/integrations/${projectIntegrations[0].id}` : '/integrations',
+    }
+  }),
+)
+
+const projectOptions = computed(() => projects.value.map((p: any) => ({ id: p.id, name: p.name })))
+const assigneeOptions = computed(() => Array.from(new Set(reportRows.value.map((row) => row.assignee))).sort())
+
+const filteredRows = computed(() =>
+  reportRows.value.filter((row) => {
+    const query = filters.query.trim().toLowerCase()
+    const matchesQuery = !query || [
+      row.project,
+      row.assignee,
+      row.note,
+      row.projectStatus,
+      row.deliveryStatus,
+      row.integrationStatus,
+    ].some((value) => value.toLowerCase().includes(query))
+    const matchesProject = !filters.project || row.projectId === filters.project
+    const matchesStatus = !filters.status || row.reviewStatus === filters.status
+    const matchesAssignee = !filters.assignee || row.assignee === filters.assignee
+    const matchesDate = (!filters.dateFrom || row.reviewDate >= filters.dateFrom) && (!filters.dateTo || row.reviewDate <= filters.dateTo)
+    return matchesQuery && matchesProject && matchesStatus && matchesAssignee && matchesDate
+  }),
+)
+
+const financeExportRows = computed<FinanceExportRow[]>(() =>
+  filteredRows.value.map((row) => ({
+    ...row,
+    exportBucket: row.financeStatus === 'Over Budget' || row.payoutStatus === 'Awaiting Approval'
+      ? 'Escalate'
+      : row.financeStatus === 'Near Limit' || row.unpaidCommission > 0
+        ? 'Watch'
+        : 'Ready',
+  })),
+)
+
+const complianceItems = computed<ComplianceItem[]>(() => {
+  const legalItems = legalDocs.value
+    .filter((item: any) => item.status !== 'approved' && item.status !== 'signed')
+    .map((item: any) => ({
+      id: `CMP-LEGAL-${item.id}`,
+      module: 'legal' as const,
+      project: projects.value.find((p: any) => p.id === item.projectId)?.name || '—',
+      entityId: item.id,
+      summary: `${item.title} remains in ${item.status} state and needs legal follow-up.`,
+      severity: (item.status === 'sent' ? 'warning' : 'critical') as ComplianceItem['severity'],
+      status: item.status,
+      timestamp: item.updatedAt || item.createdAt || '',
+      route: `/legal/${item.id}`,
+    }))
+
+  const integrationItems = integrations.value
+    .filter((item: any) => item.status !== 'active')
+    .map((item: any) => ({
+      id: `CMP-INT-${item.id}`,
+      module: 'integrations' as const,
+      project: projects.value.find((p: any) => p.id === item.projectId)?.name || '—',
+      entityId: item.id,
+      summary: `${item.name} health is ${item.status} and needs review.`,
+      severity: (item.status === 'error' ? 'critical' : 'warning') as ComplianceItem['severity'],
+      status: item.status,
+      timestamp: item.lastSyncedAt || item.createdAt || '',
+      route: `/integrations/${item.id}`,
+    }))
+
+  const auditItems = activityLogs.value
+    .slice(0, 6)
+    .map((entry: any) => ({
+      id: `CMP-AUD-${entry.id}`,
+      module: 'audit' as const,
+      project: projects.value.find((p: any) => p.id === entry.projectId)?.name || '—',
+      entityId: entry.entityId || '',
+      summary: entry.description || entry.action,
+      severity: 'info' as ComplianceItem['severity'],
+      status: entry.action,
+      timestamp: entry.createdAt || '',
+      route: '/audit-trail',
+    }))
+
+  return [...legalItems, ...integrationItems, ...auditItems].sort((left, right) => (right.timestamp || '').localeCompare(left.timestamp || ''))
+})
+
+const filteredComplianceItems = computed(() =>
+  complianceItems.value.filter((item) => {
+    const query = filters.query.trim().toLowerCase()
+    const matchesQuery = !query || [item.project, item.summary, item.status, item.entityId, item.module].some((value) =>
+      value.toLowerCase().includes(query),
+    )
+    const matchesProject = !filters.project || item.project === filters.project
+    const ts = item.timestamp?.slice(0, 10) || ''
+    const matchesDate = (!filters.dateFrom || ts >= filters.dateFrom) && (!filters.dateTo || ts <= filters.dateTo)
+    return matchesQuery && matchesProject && matchesDate
+  }),
+)
+
+const reportStats = computed(() => ({
+  deliveryAttention: filteredRows.value.filter((row) => row.deliveryStatus !== 'On Track').length,
+  blockedProjects: filteredRows.value.filter((row) => row.deliveryStatus === 'Blocked' || row.deliveryStatus === 'At Risk').length,
+  varianceExposure: filteredRows.value.reduce((sum, row) => sum + Math.max(row.budgetVariance, 0), 0),
+  overBudgetProjects: filteredRows.value.filter((row) => row.financeStatus === 'Over Budget').length,
+  unpaidCommissions: filteredRows.value.reduce((sum, row) => sum + row.unpaidCommission, 0),
+  awaitingPayout: filteredRows.value.filter((row) => row.payoutStatus !== 'Paid').length,
+  complianceAlerts: filteredComplianceItems.value.length,
+}))
 
 function closeExportModal() {
   isExportModalOpen.value = false
@@ -364,219 +526,6 @@ function createExportBundle() {
   exportDraft.includeNotes = true
   closeExportModal()
 }
-
-const reportRows = reactive<ReportRow[]>([
-  {
-    id: 'REP-101',
-    project: 'SignalTribe Platform',
-    projectStatus: 'Active delivery',
-    assignee: 'Nadia',
-    reviewDate: '2026-03-24',
-    openItems: 6,
-    deliveryStatus: 'Blocked',
-    financeStatus: 'Near Limit',
-    payoutStatus: 'Awaiting Approval',
-    legalStatus: 'Pending Signature',
-    integrationStatus: 'Partial',
-    budgetVariance: 7000000,
-    unpaidCommission: 4000000,
-    note: 'Blocked feature depends on signed handoff scope and refreshed sync mapping.',
-    reviewStatus: 'Escalated',
-    projectRoute: '/projects/101',
-    financeRoute: '/finance',
-    integrationRoute: '/integrations/int-101',
-  },
-  {
-    id: 'REP-102',
-    project: 'OpsDesk CRM',
-    projectStatus: 'Planning',
-    assignee: 'Aulia',
-    reviewDate: '2026-03-29',
-    openItems: 4,
-    deliveryStatus: 'On Track',
-    financeStatus: 'Healthy',
-    payoutStatus: 'Scheduled',
-    legalStatus: 'Approved',
-    integrationStatus: 'Healthy',
-    budgetVariance: -12000000,
-    unpaidCommission: 6000000,
-    note: 'Scope lock and payout scheduling ready for next finance review.',
-    reviewStatus: 'Stable',
-    projectRoute: '/projects/102',
-    financeRoute: '/finance',
-    integrationRoute: '/integrations',
-  },
-  {
-    id: 'REP-103',
-    project: 'FleetOps Internal Tools',
-    projectStatus: 'At risk',
-    assignee: 'Rizal',
-    reviewDate: '2026-03-22',
-    openItems: 8,
-    deliveryStatus: 'At Risk',
-    financeStatus: 'Over Budget',
-    payoutStatus: 'Awaiting Approval',
-    legalStatus: 'In Review',
-    integrationStatus: 'Failed',
-    budgetVariance: 3250000,
-    unpaidCommission: 2010000,
-    note: 'Critical API regression and budget overrun require owner escalation.',
-    reviewStatus: 'Escalated',
-    projectRoute: '/projects/103',
-    financeRoute: '/finance',
-    integrationRoute: '/integrations/int-102',
-  },
-  {
-    id: 'REP-104',
-    project: 'Clinic Portal Suite',
-    projectStatus: 'Active delivery',
-    assignee: 'Fikri',
-    reviewDate: '2026-04-06',
-    openItems: 3,
-    deliveryStatus: 'On Track',
-    financeStatus: 'Healthy',
-    payoutStatus: 'Paid',
-    legalStatus: 'Approved',
-    integrationStatus: 'Healthy',
-    budgetVariance: -4500000,
-    unpaidCommission: 0,
-    note: 'Release candidate is stable and legal package already approved.',
-    reviewStatus: 'Stable',
-    projectRoute: '/projects',
-    financeRoute: '/finance',
-    integrationRoute: '/integrations',
-  },
-  {
-    id: 'REP-105',
-    project: 'Atlas Commerce API',
-    projectStatus: 'Active delivery',
-    assignee: 'Nadia',
-    reviewDate: '2026-04-12',
-    openItems: 5,
-    deliveryStatus: 'At Risk',
-    financeStatus: 'Near Limit',
-    payoutStatus: 'Scheduled',
-    legalStatus: 'In Review',
-    integrationStatus: 'Partial',
-    budgetVariance: 1500000,
-    unpaidCommission: 3500000,
-    note: 'Milestone handoff waits on proposal revision and partner API retry window.',
-    reviewStatus: 'Needs Review',
-    projectRoute: '/projects',
-    financeRoute: '/finance',
-    integrationRoute: '/integrations/int-103',
-  },
-])
-
-const projectOptions = computed(() => Array.from(new Set(reportRows.map((row) => row.project))).sort())
-const assigneeOptions = computed(() => Array.from(new Set(reportRows.map((row) => row.assignee))).sort())
-
-const filteredRows = computed(() =>
-  reportRows.filter((row) => {
-    const query = filters.query.trim().toLowerCase()
-    const matchesQuery = !query || [
-      row.project,
-      row.assignee,
-      row.note,
-      row.projectStatus,
-      row.deliveryStatus,
-      row.integrationStatus,
-    ].some((value) => value.toLowerCase().includes(query))
-    const matchesProject = !filters.project || row.project === filters.project
-    const matchesStatus = !filters.status || row.reviewStatus === filters.status
-    const matchesAssignee = !filters.assignee || row.assignee === filters.assignee
-    const matchesDate = row.reviewDate >= filters.dateFrom && row.reviewDate <= filters.dateTo
-    return matchesQuery && matchesProject && matchesStatus && matchesAssignee && matchesDate
-  }),
-)
-
-const financeExportRows = computed<FinanceExportRow[]>(() =>
-  filteredRows.value.map((row) => ({
-    ...row,
-    exportBucket: row.financeStatus === 'Over Budget' || row.payoutStatus === 'Awaiting Approval'
-      ? 'Escalate'
-      : row.financeStatus === 'Near Limit' || row.unpaidCommission > 0
-        ? 'Watch'
-        : 'Ready',
-  })),
-)
-
-const complianceItems = computed<ComplianceItem[]>(() => {
-  const legalItems = legalDocuments
-    .filter((item) => item.status !== 'approved' && item.status !== 'signed')
-    .map((item) => ({
-      id: `CMP-LEGAL-${item.id}`,
-      module: 'legal' as const,
-      project: item.project,
-      entityId: item.id,
-      summary: `${item.name} remains in ${item.status} state and needs legal follow-up.`,
-      severity: item.status === 'sent' ? 'warning' : 'critical',
-      status: item.status,
-      timestamp: item.updatedAt,
-      route: `/legal/${item.id}`,
-    }))
-
-  const integrationItems = integrationConnections.flatMap((item) => {
-    const latestJob = (integrationSyncJobs[item.id] || [])[0]
-    const latestPayload = (integrationPayloadSnapshots[item.id] || [])[0]
-    if (item.status === 'Active' && item.errorCount === 0 && latestJob?.status !== 'failed' && latestJob?.status !== 'partial') {
-      return []
-    }
-
-    return [{
-      id: `CMP-INT-${item.id}`,
-      module: 'integrations' as const,
-      project: item.project,
-      entityId: item.id,
-      summary: latestPayload?.status === 'failed'
-        ? `${item.name} has failed payload review and needs connector investigation.`
-        : `${item.name} health is ${item.status.toLowerCase()} with sync review still pending.`,
-      severity: item.status === 'Error' || latestJob?.status === 'failed' ? 'critical' : 'warning',
-      status: latestJob?.status || item.status,
-      timestamp: latestJob?.startedAt || item.lastSync,
-      route: `/integrations/${item.id}`,
-    }]
-  })
-
-  const auditItems = auditTrailEntries
-    .filter((entry) => entry.severity !== 'info')
-    .slice(0, 6)
-    .map((entry) => ({
-      id: `CMP-AUD-${entry.id}`,
-      module: 'audit' as const,
-      project: entry.project,
-      entityId: entry.entityId,
-      summary: entry.summary,
-      severity: entry.severity,
-      status: entry.action,
-      timestamp: entry.createdAt,
-      route: '/audit-trail',
-    }))
-
-  return [...legalItems, ...integrationItems, ...auditItems].sort((left, right) => right.timestamp.localeCompare(left.timestamp))
-})
-
-const filteredComplianceItems = computed(() =>
-  complianceItems.value.filter((item) => {
-    const query = filters.query.trim().toLowerCase()
-    const matchesQuery = !query || [item.project, item.summary, item.status, item.entityId, item.module].some((value) =>
-      value.toLowerCase().includes(query),
-    )
-    const matchesProject = !filters.project || item.project === filters.project
-    const matchesDate = item.timestamp.slice(0, 10) >= filters.dateFrom && item.timestamp.slice(0, 10) <= filters.dateTo
-    return matchesQuery && matchesProject && matchesDate
-  }),
-)
-
-const reportStats = computed(() => ({
-  deliveryAttention: filteredRows.value.filter((row) => row.deliveryStatus !== 'On Track').length,
-  blockedProjects: filteredRows.value.filter((row) => row.deliveryStatus === 'Blocked' || row.deliveryStatus === 'At Risk').length,
-  varianceExposure: filteredRows.value.reduce((sum, row) => sum + Math.max(row.budgetVariance, 0), 0),
-  overBudgetProjects: filteredRows.value.filter((row) => row.financeStatus === 'Over Budget').length,
-  unpaidCommissions: filteredRows.value.reduce((sum, row) => sum + row.unpaidCommission, 0),
-  awaitingPayout: filteredRows.value.filter((row) => row.payoutStatus !== 'Paid').length,
-  complianceAlerts: filteredComplianceItems.value.length,
-}))
 
 function deliveryBadgeClass(status: ReportRow['deliveryStatus']) {
   return {
@@ -700,9 +649,9 @@ function complianceStatusLabel(item: ComplianceItem) {
 
 function integrationConnectionStatusLabel(status: string) {
   return {
-    Active: t('reports.stable'),
-    Paused: t('reports.needsReview'),
-    Error: t('reports.escalated'),
+    active: t('reports.stable'),
+    paused: t('reports.needsReview'),
+    error: t('reports.escalated'),
     failed: t('reports.escalated'),
     partial: t('reports.needsReview'),
     queued: 'Queued',

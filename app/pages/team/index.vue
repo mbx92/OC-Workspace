@@ -79,27 +79,19 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="member in filteredMembers" :key="member.email">
+                <tr v-for="member in filteredMembers" :key="member.id">
                   <td>
                     <div class="font-medium text-base-content">{{ member.name }}</div>
                     <div class="text-xs text-base-content/50">{{ member.email }}</div>
-                    <div class="mt-1 flex flex-wrap gap-1">
-                      <span v-for="skill in member.skills" :key="skill" class="badge badge-ghost badge-sm">{{ skill }}</span>
-                    </div>
                   </td>
                   <td class="text-sm text-base-content/75">{{ member.role }}</td>
-                  <td class="text-sm text-base-content/75">
-                    <div class="font-medium text-base-content">{{ member.projects.length }} projects</div>
-                    <div class="text-xs text-base-content/50">{{ member.projects.join(', ') }}</div>
-                  </td>
-                  <td class="text-sm" :class="member.openTasks > 6 ? 'font-semibold text-warning' : 'text-base-content/75'">{{ member.openTasks }}</td>
+                  <td class="text-sm text-base-content/75">—</td>
+                  <td class="text-sm text-base-content/75">—</td>
                   <td>
-                    <span class="badge badge-outline" :class="member.commissionEligible ? 'badge-success' : 'badge-neutral'">
-                      {{ member.commissionEligible ? 'Eligible' : 'No default' }}
-                    </span>
+                    <span class="badge badge-outline badge-neutral">—</span>
                   </td>
                   <td>
-                    <span class="badge badge-outline" :class="member.status === 'Active' ? 'badge-success' : 'badge-neutral'">{{ member.status }}</span>
+                    <span class="badge badge-outline" :class="member.isActive ? 'badge-success' : 'badge-neutral'">{{ member.isActive ? 'Active' : 'Inactive' }}</span>
                   </td>
                 </tr>
                 <tr v-if="!filteredMembers.length">
@@ -137,7 +129,7 @@
                   <span class="font-medium text-base-content">{{ member.name }}</span>
                   <span class="text-base-content/55">{{ member.openTasks }} open tasks</span>
                 </div>
-                <progress class="progress progress-primary h-2 w-full" :value="member.openTasks" :max="workloadMax" />
+                <progress class="progress progress-primary h-2 w-full" :value="member.openTasks ?? 0" :max="workloadMax" />
               </div>
             </div>
           </div>
@@ -158,7 +150,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isMemberModalOpen"
       title="Add team member"
       kicker="Team"
@@ -168,51 +160,32 @@
       <fieldset class="fieldset gap-4">
         <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Full name" />
         <input v-model="draft.email" type="email" class="input input-bordered w-full" placeholder="Email" />
-        <input v-model="draft.role" type="text" class="input input-bordered w-full" placeholder="Role" />
-        <input v-model="draft.skills" type="text" class="input input-bordered w-full" placeholder="Skills, comma separated" />
-        <select v-model="draft.primaryProject" class="select select-bordered w-full">
-          <option value="">Primary project</option>
-          <option v-for="project in projectOptions" :key="project" :value="project">{{ project }}</option>
+        <input v-model="draft.password" type="password" class="input input-bordered w-full" placeholder="Password" />
+        <select v-model="draft.role" class="select select-bordered w-full">
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+          <option value="project_manager">Project Manager</option>
+          <option value="finance">Finance</option>
+          <option value="developer">Developer</option>
+          <option value="designer">Designer</option>
+          <option value="qa">QA</option>
         </select>
-        <label class="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-3 py-2">
-          <input v-model="draft.commissionEligible" type="checkbox" class="checkbox checkbox-sm" />
-          <span class="label-text">Default commission eligible</span>
-        </label>
       </fieldset>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="closeMemberModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="addMember">Save member</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { IconAlertTriangle } from '@tabler/icons-vue'
 
-import { appendAuditEntry } from '~/data/audit'
-
 definePageMeta({ layout: 'default' })
 
-type Member = {
-  name: string
-  email: string
-  role: string
-  skills: string[]
-  status: 'Active' | 'Inactive'
-  projects: string[]
-  openTasks: number
-  commissionEligible: boolean
-}
-
-const teamMembers = reactive<Member[]>([
-  { name: 'Aulia Rahman', email: 'aulia@signaltribe.dev', role: 'Technical Lead', skills: ['Architecture', 'Backend', 'DevOps'], status: 'Active', projects: ['SignalTribe Platform', 'OpsDesk CRM'], openTasks: 5, commissionEligible: true },
-  { name: 'Nadia Putri', email: 'nadia@signaltribe.dev', role: 'Project Manager', skills: ['Planning', 'Delivery', 'Client Ops'], status: 'Active', projects: ['SignalTribe Platform', 'OpsDesk CRM'], openTasks: 7, commissionEligible: true },
-  { name: 'Rizal Saputra', email: 'rizal@signaltribe.dev', role: 'Frontend Engineer', skills: ['Nuxt', 'UI Systems'], status: 'Active', projects: ['SignalTribe Platform', 'FleetOps Internal Tools'], openTasks: 4, commissionEligible: false },
-  { name: 'Fikri Hidayat', email: 'fikri@signaltribe.dev', role: 'DevOps Engineer', skills: ['Infra', 'Security', 'Deployments'], status: 'Active', projects: ['SignalTribe Platform'], openTasks: 6, commissionEligible: false },
-  { name: 'Dina Maharani', email: 'dina@signaltribe.dev', role: 'QA Engineer', skills: ['Regression', 'UAT'], status: 'Inactive', projects: ['SignalTribe Platform'], openTasks: 0, commissionEligible: false },
-])
+const { data: teamMembers, refresh } = await useFetch('/api/team')
 
 const filters = reactive({
   query: '',
@@ -224,58 +197,55 @@ const filters = reactive({
 const draft = reactive({
   name: '',
   email: '',
-  role: '',
-  skills: '',
-  primaryProject: '',
-  commissionEligible: false,
+  password: '',
+  role: 'developer',
 })
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const isMemberModalOpen = ref(false)
 
-const roleOptions = computed(() => Array.from(new Set(teamMembers.map((member) => member.role))).sort())
-const projectOptions = computed(() => Array.from(new Set(teamMembers.flatMap((member) => member.projects))).sort())
+const roleOptions = computed(() => Array.from(new Set((teamMembers.value ?? []).map((m: any) => m.role))).sort())
+const projectOptions: string[] = []
 
 const filteredMembers = computed(() =>
-  teamMembers.filter((member) => {
+  (teamMembers.value ?? []).filter((member: any) => {
     const query = filters.query.trim().toLowerCase()
-    const matchesQuery = !query || [member.name, member.email, member.role, member.skills.join(' '), member.projects.join(' ')].some((value) => value.toLowerCase().includes(query))
+    const matchesQuery = !query || [member.name, member.email, member.role].some((value: string) => value?.toLowerCase().includes(query))
     const matchesRole = !filters.role || member.role === filters.role
-    const matchesStatus = !filters.status || member.status === filters.status
-    const matchesProject = !filters.project || member.projects.includes(filters.project)
-    return matchesQuery && matchesRole && matchesStatus && matchesProject
+    const matchesStatus = !filters.status || (filters.status === 'Active' ? member.isActive : !member.isActive)
+    return matchesQuery && matchesRole && matchesStatus
   }),
 )
 
-const teamStats = computed(() => ({
-  activeMembers: teamMembers.filter((member) => member.status === 'Active').length,
-  inactiveMembers: teamMembers.filter((member) => member.status === 'Inactive').length,
-  activeAssignments: teamMembers.reduce((sum, member) => sum + member.projects.length, 0),
-  multiProjectMembers: teamMembers.filter((member) => member.projects.length > 1).length,
-  openTasks: teamMembers.reduce((sum, member) => sum + member.openTasks, 0),
-  overloadedMembers: teamMembers.filter((member) => member.openTasks > 6).length,
-  commissionEligible: teamMembers.filter((member) => member.commissionEligible).length,
-}))
+const teamStats = computed(() => {
+  const members = teamMembers.value ?? []
+  return {
+    activeMembers: members.filter((m: any) => m.isActive).length,
+    inactiveMembers: members.filter((m: any) => !m.isActive).length,
+    activeAssignments: 0,
+    multiProjectMembers: 0,
+    openTasks: 0,
+    overloadedMembers: 0,
+    commissionEligible: members.length,
+  }
+})
 
 const workloadMembers = computed(() =>
-  teamMembers
-    .filter((member) => member.status === 'Active')
-    .slice()
-    .sort((left, right) => right.openTasks - left.openTasks),
+  (teamMembers.value ?? []).filter((m: any) => m.isActive),
 )
 
-const workloadMax = computed(() => Math.max(...workloadMembers.value.map((member) => member.openTasks), 1))
+const workloadMax = computed(() => {
+  const max = Math.max(...workloadMembers.value.map((m: any) => m.openTasks ?? 0), 1)
+  return max
+})
 
 const roleCoverage = computed(() =>
-  Array.from(new Set(teamMembers.map((member) => member.role)))
-    .map((role) => ({ role, count: teamMembers.filter((member) => member.role === role).length }))
-    .sort((left, right) => right.count - left.count),
+  Array.from(new Set((teamMembers.value ?? []).map((m: any) => m.role)))
+    .map((role: string) => ({ role, count: (teamMembers.value ?? []).filter((m: any) => m.role === role).length }))
+    .sort((a, b) => b.count - a.count),
 )
 
-const overloadAlert = computed(() => {
-  const member = workloadMembers.value.find((item) => item.openTasks > 6)
-  return member ? `${member.name} currently owns ${member.openTasks} open tasks across ${member.projects.length} projects.` : ''
-})
+const overloadAlert = computed(() => '')
 
 function showMessage(type: 'success' | 'error', text: string) {
   message.value = { type, text }
@@ -285,50 +255,31 @@ function closeMemberModal() {
   isMemberModalOpen.value = false
 }
 
-function addMember() {
-  if (!draft.name.trim() || !draft.email.trim() || !draft.role.trim()) {
-    showMessage('error', 'Name, email, and role are required.')
+async function addMember() {
+  if (!draft.name.trim() || !draft.email.trim() || !draft.password.trim()) {
+    showMessage('error', 'Name, email, and password are required.')
     return
   }
 
-  const newMember = {
-    name: draft.name.trim(),
-    email: draft.email.trim(),
-    role: draft.role.trim(),
-    skills: draft.skills.split(',').map((item) => item.trim()).filter(Boolean),
-    status: 'Active',
-    projects: draft.primaryProject ? [draft.primaryProject] : [],
-    openTasks: 0,
-    commissionEligible: draft.commissionEligible,
+  try {
+    await $fetch('/api/team', {
+      method: 'POST',
+      body: {
+        name: draft.name.trim(),
+        email: draft.email.trim(),
+        password: draft.password,
+        role: draft.role,
+      },
+    })
+    showMessage('success', 'Team member saved.')
+    draft.name = ''
+    draft.email = ''
+    draft.password = ''
+    draft.role = 'developer'
+    closeMemberModal()
+    refresh()
+  } catch (e: any) {
+    showMessage('error', e?.data?.message || 'Failed to add member.')
   }
-
-  teamMembers.unshift(newMember)
-
-  appendAuditEntry({
-    actorUserId: 'team.ops@signaltribe.dev',
-    module: 'team',
-    project: newMember.projects[0] || 'Unassigned',
-    entityType: 'team-member',
-    entityId: newMember.email,
-    action: 'record created',
-    summary: `${newMember.name} added to the team roster as ${newMember.role}.`,
-    severity: 'info',
-    beforeJson: null,
-    afterJson: {
-      role: newMember.role,
-      status: newMember.status,
-      projects: newMember.projects,
-      commissionEligible: newMember.commissionEligible,
-    },
-  })
-
-  showMessage('success', 'Team member saved.')
-  draft.name = ''
-  draft.email = ''
-  draft.role = ''
-  draft.skills = ''
-  draft.primaryProject = ''
-  draft.commissionEligible = false
-  closeMemberModal()
 }
 </script>

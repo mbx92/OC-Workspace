@@ -2,13 +2,14 @@
   <Teleport to="body">
     <dialog ref="dialogEl" class="modal" @cancel.prevent="emit('close')">
       <div :class="['modal-box border border-base-300 shadow-2xl', widthClass]">
-
         <button
           type="button"
           class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4"
           aria-label="Close"
           @click="emit('close')"
-        >✕</button>
+        >
+          &times;
+        </button>
 
         <div class="pr-8">
           <p v-if="kicker" class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ kicker }}</p>
@@ -60,13 +61,25 @@ const dialogEl = useTemplateRef<HTMLDialogElement>('dialogEl')
 
 watch(
   () => props.open,
-  (val) => {
-    if (!dialogEl.value) return
-    if (val) {
-      dialogEl.value.showModal()
-    } else {
-      dialogEl.value.close()
+  (isOpen) => {
+    const dialog = dialogEl.value
+
+    if (!dialog) {
+      return
+    }
+
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal()
+      }
+
+      return
+    }
+
+    if (dialog.open) {
+      dialog.close()
     }
   },
+  { immediate: true },
 )
 </script>

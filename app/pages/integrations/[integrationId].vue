@@ -11,7 +11,7 @@
         <p class="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">Integration Detail</p>
         <h1 class="mt-2 text-3xl font-bold text-base-content">{{ connection.name }}</h1>
         <p class="mt-2 max-w-3xl text-sm text-base-content/70">
-          {{ connection.project }} via {{ connection.provider }}. Review field mapping, sync history, raw payload snapshots, and source-backed imported records.
+          {{ connection.providerType }} connection. Review field mapping, sync history, and source-backed imported records.
         </p>
       </div>
 
@@ -27,22 +27,22 @@
         <div class="stat">
           <div class="stat-title">Connection State</div>
           <div class="stat-value text-primary">{{ connection.status }}</div>
-          <div class="stat-desc">{{ connection.authMode }} - {{ connection.readOnly ? 'Read only' : 'Write enabled' }}</div>
+          <div class="stat-desc">{{ connection.authType }}</div>
         </div>
         <div class="stat">
           <div class="stat-title">Mapped Fields</div>
           <div class="stat-value text-secondary">{{ mappingRows.length }}</div>
-          <div class="stat-desc">{{ connection.docsRef }}</div>
+          <div class="stat-desc">field mappings configured</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Imported Records</div>
+          <div class="stat-title">External Records</div>
           <div class="stat-value text-info">{{ importedRecordStats.total }}</div>
           <div class="stat-desc">{{ importedRecordStats.bugs }} bugs and {{ importedRecordStats.tasks }} tasks</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Payload Checks</div>
-          <div class="stat-value text-warning">{{ payloadStats.total }}</div>
-          <div class="stat-desc">{{ payloadStats.deduplicated }} idempotent and {{ payloadStats.failed }} failed payload review</div>
+          <div class="stat-title">Sync Jobs</div>
+          <div class="stat-value text-warning">{{ syncJobs.length }}</div>
+          <div class="stat-desc">{{ syncJobs.filter((j: any) => j.status === 'failed').length }} failed</div>
         </div>
       </div>
     </section>
@@ -56,27 +56,23 @@
                 <h2 class="text-lg font-semibold text-base-content">Field Mapping</h2>
                 <p class="text-sm text-base-content/60">Translate external statuses and priorities into normalized internal values.</p>
               </div>
-              <span class="badge badge-ghost badge-sm">{{ mappingRows.length }} rules</span>
+              <span class="badge badge-ghost badge-sm">{{ mappingRows.length }} mapping{{ mappingRows.length !== 1 ? 's' : '' }}</span>
             </div>
 
             <div class="overflow-x-auto">
               <table class="table table-sm">
                 <thead>
                   <tr>
-                    <th>External Field</th>
-                    <th>External Value</th>
-                    <th>Internal Field</th>
-                    <th>Internal Value</th>
-                    <th>Note</th>
+                    <th>Source Field</th>
+                    <th>Target Field</th>
+                    <th>Transform Rule</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in mappingRows" :key="`${row.externalField}-${row.externalValue}`">
-                    <td class="font-medium text-base-content">{{ row.externalField }}</td>
-                    <td>{{ row.externalValue }}</td>
-                    <td>{{ row.internalField }}</td>
-                    <td>{{ row.internalValue }}</td>
-                    <td class="text-sm text-base-content/65">{{ row.note }}</td>
+                  <tr v-for="row in mappingRows" :key="row.id">
+                    <td class="font-medium text-base-content">{{ row.sourceField }}</td>
+                    <td>{{ row.targetField }}</td>
+                    <td class="text-sm text-base-content/65">{{ row.transformRule || '—' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -91,7 +87,7 @@
                 <h2 class="text-lg font-semibold text-base-content">Sync Jobs</h2>
                 <p class="text-sm text-base-content/60">Queued, running, partial, and failed results stay visible for auditability.</p>
               </div>
-              <span class="badge badge-ghost badge-sm">{{ syncJobs.length }} jobs</span>
+              <span class="badge badge-ghost badge-sm">{{ syncJobs.length }} job{{ syncJobs.length !== 1 ? 's' : '' }}</span>
             </div>
 
             <div class="overflow-x-auto">
@@ -108,56 +104,12 @@
                 </thead>
                 <tbody>
                   <tr v-for="job in syncJobs" :key="job.id">
-                    <td class="font-medium text-base-content">{{ job.id }}</td>
+                    <td class="font-medium text-base-content">{{ job.id.slice(0, 8) }}</td>
                     <td><span class="badge badge-outline" :class="jobStatusClass(job.status)">{{ job.status }}</span></td>
-                    <td>{{ job.startedAt }}</td>
-                    <td>{{ job.finishedAt }}</td>
-                    <td>{{ job.importedRecords }}</td>
-                    <td class="text-sm text-base-content/65">{{ job.message }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
-          <div class="card-body p-0">
-            <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
-              <div>
-                <h2 class="text-lg font-semibold text-base-content">Payload Snapshots</h2>
-                <p class="text-sm text-base-content/60">Raw connector responses remain available for replay safety and debugging.</p>
-              </div>
-              <span class="badge badge-ghost badge-sm">{{ payloadSnapshots.length }} snapshots</span>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Snapshot</th>
-                    <th>Endpoint</th>
-                    <th>Status</th>
-                    <th>Checksum</th>
-                    <th>Payload Preview</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="snapshot in payloadSnapshots" :key="snapshot.id">
-                    <td>
-                      <div class="font-medium text-base-content">{{ snapshot.id }}</div>
-                      <div class="text-xs text-base-content/50">{{ snapshot.jobId }} - {{ snapshot.recordedAt }}</div>
-                    </td>
-                    <td class="text-sm text-base-content/75">{{ snapshot.endpoint }}</td>
-                    <td>
-                      <span class="badge badge-outline" :class="payloadBadgeClass(snapshot.status)">{{ snapshot.status }}</span>
-                      <div class="mt-1 text-xs text-base-content/50">{{ snapshot.deduplicated ? 'Idempotent' : 'Needs review' }}</div>
-                    </td>
-                    <td class="text-xs text-base-content/65">{{ snapshot.checksum }}</td>
-                    <td class="text-xs text-base-content/65">{{ snapshot.payloadPreview }}</td>
-                  </tr>
-                  <tr v-if="!payloadSnapshots.length">
-                    <td colspan="5" class="py-8 text-center text-sm text-base-content/55">No payload snapshots recorded yet.</td>
+                    <td>{{ job.startedAt?.slice(0, 16) || '—' }}</td>
+                    <td>{{ job.finishedAt?.slice(0, 16) || '—' }}</td>
+                    <td>{{ job.recordsCreated + job.recordsUpdated }}</td>
+                    <td class="text-sm text-base-content/65">{{ job.errorMessage || job.jobType }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -175,8 +127,8 @@
 
               <select v-model="recordFilters.kind" class="select select-bordered select-sm w-full lg:w-36">
                 <option value="">All kinds</option>
-                <option>Bug</option>
-                <option>Task</option>
+                <option value="bug">Bug</option>
+                <option value="task">Task</option>
               </select>
             </div>
 
@@ -185,33 +137,25 @@
                 <thead>
                   <tr>
                     <th>Source ID</th>
-                    <th>Kind</th>
-                    <th>Title</th>
+                    <th>Entity Type</th>
+                    <th>Mapped Entity</th>
                     <th>Source Status</th>
-                    <th>Internal Status</th>
-                    <th>Priority</th>
-                    <th>Read Only</th>
+                    <th>Mapped ID</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="record in filteredRecords" :key="record.sourceId">
+                  <tr v-for="record in filteredRecords" :key="record.id">
                     <td class="font-medium text-base-content">{{ record.sourceId }}</td>
-                    <td>{{ record.kind }}</td>
+                    <td>{{ record.sourceEntityType }}</td>
                     <td>
-                      <div class="font-medium text-base-content">{{ record.title }}</div>
-                      <div class="text-xs text-base-content/50">{{ record.lastSync }}</div>
+                      <div class="font-medium text-base-content">{{ record.mappedEntityType || '—' }}</div>
+                      <div class="text-xs text-base-content/50">{{ record.lastSeenAt?.slice(0, 16) || '—' }}</div>
                     </td>
-                    <td>{{ record.sourceStatus }}</td>
-                    <td>{{ record.internalStatus }}</td>
-                    <td>{{ record.priority }}</td>
-                    <td>
-                      <span class="badge badge-outline" :class="record.readOnly ? 'badge-info' : 'badge-warning'">
-                        {{ record.readOnly ? 'Yes' : 'No' }}
-                      </span>
-                    </td>
+                    <td>{{ record.sourceStatus || '—' }}</td>
+                    <td>{{ record.mappedEntityId?.slice(0, 8) || '—' }}</td>
                   </tr>
                   <tr v-if="!filteredRecords.length">
-                    <td colspan="7" class="py-10 text-center text-sm text-base-content/55">No imported records match the current filters.</td>
+                    <td colspan="5" class="py-10 text-center text-sm text-base-content/55">No imported records match the current filters.</td>
                   </tr>
                 </tbody>
               </table>
@@ -225,7 +169,7 @@
           <span>{{ message.text }}</span>
         </div>
 
-        <div v-if="connection.status === 'Error'" role="alert" class="alert alert-soft alert-warning items-start">
+        <div v-if="connection.status === 'error'" role="alert" class="alert alert-soft alert-warning items-start">
           <IconAlertTriangle class="mt-0.5 h-5 w-5" />
           <div>
             <h3 class="font-semibold">Connector issue</h3>
@@ -243,19 +187,19 @@
             <div class="space-y-3 text-sm">
               <div class="rounded-box bg-base-200/50 px-4 py-3">
                 <div class="font-medium text-base-content">Base URL</div>
-                <div class="mt-1 text-base-content/65">{{ connection.baseUrl }}</div>
+                <div class="mt-1 text-base-content/65">{{ connection.baseUrl || '—' }}</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Scope</div>
-                <div class="mt-1 text-base-content/65">{{ connection.scope.join(', ') }}</div>
+                <div class="font-medium text-base-content">Auth Type</div>
+                <div class="mt-1 text-base-content/65">{{ connection.authType }}</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Docs Reference</div>
-                <div class="mt-1 text-base-content/65">{{ connection.docsRef }}</div>
+                <div class="font-medium text-base-content">Provider Type</div>
+                <div class="mt-1 text-base-content/65">{{ connection.providerType }}</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
                 <div class="font-medium text-base-content">Latest Sync</div>
-                <div class="mt-1 text-base-content/65">{{ latestJob?.startedAt || 'No sync history yet' }} - {{ latestJob?.status || 'n/a' }}</div>
+                <div class="mt-1 text-base-content/65">{{ latestJob?.startedAt?.slice(0, 16) || 'No sync history yet' }} - {{ latestJob?.status || 'n/a' }}</div>
               </div>
             </div>
           </div>
@@ -278,15 +222,15 @@
             <div class="space-y-3 text-sm">
               <div class="rounded-box bg-base-200/50 px-4 py-3">
                 <div class="font-medium text-base-content">Failed Jobs</div>
-                <div class="mt-1 text-base-content/65">{{ syncJobs.filter((job) => job.status === 'failed').length }} job still marked failed.</div>
+                <div class="mt-1 text-base-content/65">{{ syncJobs.filter((job: any) => job.status === 'failed').length }} job(s) marked failed.</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Failed Payloads</div>
-                <div class="mt-1 text-base-content/65">{{ payloadStats.failed }} payload snapshot requires connector review.</div>
+                <div class="font-medium text-base-content">Records Created</div>
+                <div class="mt-1 text-base-content/65">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsCreated || 0), 0) }} records created across all jobs.</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Replay Safety</div>
-                <div class="mt-1 text-base-content/65">{{ payloadStats.deduplicated }} snapshot already passed idempotency checks.</div>
+                <div class="font-medium text-base-content">Records Updated</div>
+                <div class="mt-1 text-base-content/65">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsUpdated || 0), 0) }} records updated across all jobs.</div>
               </div>
             </div>
           </div>
@@ -313,17 +257,6 @@ import {
   IconPlugConnected,
 } from '@tabler/icons-vue'
 
-import { appendAuditEntry } from '~/data/audit'
-import {
-  integrationConnections,
-  integrationImportedRecords,
-  integrationMappings,
-  integrationPayloadSnapshots,
-  integrationSyncJobs,
-  type IntegrationPayloadSnapshot,
-  type IntegrationSyncJob,
-} from '~/data/integrations'
-
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
@@ -331,21 +264,12 @@ const integrationId = Array.isArray(route.params.integrationId)
   ? route.params.integrationId[0]
   : String(route.params.integrationId || '')
 
-const connection = computed(() =>
-  integrationConnections.find((item) => item.id === integrationId),
-)
+const { data: detailData, refresh: refreshDetail } = await useFetch(`/api/integrations/${integrationId}`)
 
-const mappingRows = computed(() => integrationMappings[integrationId] || [])
-
-const syncJobs = reactive<IntegrationSyncJob[]>(
-  (integrationSyncJobs[integrationId] || []).map((job) => ({ ...job })),
-)
-
-const payloadSnapshots = reactive<IntegrationPayloadSnapshot[]>(
-  (integrationPayloadSnapshots[integrationId] || []).map((snapshot) => ({ ...snapshot })),
-)
-
-const importedRecords = computed(() => integrationImportedRecords[integrationId] || [])
+const connection = computed(() => detailData.value?.connection || null)
+const mappingRows = computed(() => detailData.value?.mappings || [])
+const syncJobs = computed(() => detailData.value?.syncJobs || [])
+const externalRecords = computed(() => detailData.value?.records || [])
 
 const recordFilters = reactive({
   query: '',
@@ -354,32 +278,28 @@ const recordFilters = reactive({
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
-const latestJob = computed(() => syncJobs[0] || null)
+const latestJob = computed(() => syncJobs.value[0] || null)
 
 const filteredRecords = computed(() =>
-  importedRecords.value.filter((record) => {
+  externalRecords.value.filter((record: any) => {
     const query = recordFilters.query.trim().toLowerCase()
-    const matchesQuery = !query || [record.sourceId, record.title, record.sourceStatus, record.internalStatus].some((value) =>
-      value.toLowerCase().includes(query),
+    const matchesQuery = !query || [record.sourceId, record.sourceEntityType, record.sourceStatus].some((value: string) =>
+      value?.toLowerCase().includes(query),
     )
-    const matchesKind = !recordFilters.kind || record.kind === recordFilters.kind
+    const matchesKind = !recordFilters.kind || record.sourceEntityType === recordFilters.kind
     return matchesQuery && matchesKind
   }),
 )
 
 const importedRecordStats = computed(() => ({
-  total: importedRecords.value.length,
-  bugs: importedRecords.value.filter((record) => record.kind === 'Bug').length,
-  tasks: importedRecords.value.filter((record) => record.kind === 'Task').length,
+  total: externalRecords.value.length,
+  bugs: externalRecords.value.filter((r: any) => r.sourceEntityType === 'bug').length,
+  tasks: externalRecords.value.filter((r: any) => r.sourceEntityType === 'task').length,
 }))
 
-const payloadStats = computed(() => ({
-  total: payloadSnapshots.length,
-  deduplicated: payloadSnapshots.filter((snapshot) => snapshot.deduplicated).length,
-  failed: payloadSnapshots.filter((snapshot) => snapshot.status === 'failed').length,
-}))
+const payloadStats = computed(() => ({ total: 0, deduplicated: 0, failed: 0 }))
 
-function jobStatusClass(status: IntegrationSyncJob['status']) {
+function jobStatusClass(status: string) {
   return {
     'badge-info': status === 'queued' || status === 'running',
     'badge-success': status === 'succeeded',
@@ -388,7 +308,7 @@ function jobStatusClass(status: IntegrationSyncJob['status']) {
   }
 }
 
-function payloadBadgeClass(status: IntegrationPayloadSnapshot['status']) {
+function payloadBadgeClass(status: string) {
   return {
     'badge-success': status === 'accepted',
     'badge-warning': status === 'ignored',
@@ -396,64 +316,22 @@ function payloadBadgeClass(status: IntegrationPayloadSnapshot['status']) {
   }
 }
 
-function nowStamp() {
-  return new Date().toISOString().slice(0, 16).replace('T', ' ')
-}
-
-function queueManualSync() {
+async function queueManualSync() {
   if (!connection.value) {
     message.value = { type: 'error', text: 'Integration connection is not available.' }
     return
   }
 
-  const previousLatestJob = latestJob.value
-  const record = {
-    id: `JOB-${connection.value.id.toUpperCase()}-${syncJobs.length + 1}`,
-    status: 'queued' as const,
-    startedAt: nowStamp(),
-    finishedAt: '-',
-    importedRecords: 0,
-    message: 'Manual sync queued from integration detail workspace.',
+  try {
+    await $fetch(`/api/integrations/${integrationId}/sync`, {
+      method: 'POST',
+      body: { jobType: 'full_sync' },
+    })
+
+    await refreshDetail()
+    message.value = { type: 'success', text: 'Manual sync queued.' }
+  } catch (err: any) {
+    message.value = { type: 'error', text: err?.data?.statusMessage || 'Failed to queue sync.' }
   }
-
-  const snapshot = {
-    id: `PAY-${connection.value.id.toUpperCase()}-${payloadSnapshots.length + 1}`,
-    jobId: record.id,
-    recordedAt: record.startedAt,
-    endpoint: '/manual/replay',
-    checksum: `sha256:manual-${payloadSnapshots.length + 1}`,
-    deduplicated: true,
-    status: 'ignored' as const,
-    payloadPreview: '{"reason":"manual sync queued, awaiting upstream payload","kind":"manual-replay"}',
-  }
-
-  syncJobs.unshift(record)
-  integrationSyncJobs[connection.value.id] = syncJobs.map((job) => ({ ...job }))
-  payloadSnapshots.unshift(snapshot)
-  integrationPayloadSnapshots[connection.value.id] = payloadSnapshots.map((item) => ({ ...item }))
-
-  appendAuditEntry({
-    actorUserId: 'integrations.ops@signaltribe.dev',
-    module: 'integrations',
-    project: connection.value.project,
-    entityType: 'integration-sync',
-    entityId: record.id,
-    action: 'integration sync started',
-    summary: `Manual sync queued for ${connection.value.name}.`,
-    severity: connection.value.status === 'Error' ? 'warning' : 'info',
-    beforeJson: {
-      connectionId: connection.value.id,
-      previousLatestJobId: previousLatestJob?.id || null,
-      previousLatestStatus: previousLatestJob?.status || null,
-    },
-    afterJson: {
-      connectionId: connection.value.id,
-      status: record.status,
-      startedAt: record.startedAt,
-      payloadSnapshotId: snapshot.id,
-    },
-  })
-
-  message.value = { type: 'success', text: 'Manual sync queued.' }
 }
 </script>

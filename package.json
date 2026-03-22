@@ -7,20 +7,38 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "npx tsx server/db/seed.ts"
   },
   "dependencies": {
     "@tabler/icons-vue": "^3.40.0",
     "@tailwindcss/vite": "^4.2.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.3.1",
+    "drizzle-orm": "^0.45.1",
+    "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "nuxt": "^3.21.1",
+    "pg": "^8.20.0",
     "tailwindcss": "^4.2.1",
+    "uuid": "^13.0.0",
     "vue": "^3.5.29",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.5",
-    "daisyui": "^5.5.19"
+    "@types/pg": "^8.20.0",
+    "@types/uuid": "^10.0.0",
+    "daisyui": "^5.5.19",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.21.0"
   }
 }

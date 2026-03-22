@@ -4,7 +4,7 @@
       <div class="breadcrumbs text-sm text-base-content/60">
         <ul>
           <li><NuxtLink to="/projects">Projects</NuxtLink></li>
-          <li><NuxtLink :to="`/projects/${project.id}`">{{ project.code }}</NuxtLink></li>
+          <li><NuxtLink :to="`/projects/${projectId}`">{{ project?.code || projectId }}</NuxtLink></li>
           <li>Licenses</li>
         </ul>
       </div>
@@ -12,7 +12,7 @@
       <div class="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">Licenses And Credentials</p>
-          <h1 class="mt-2 text-3xl font-bold text-base-content">{{ project.name }}</h1>
+          <h1 class="mt-2 text-3xl font-bold text-base-content">{{ project?.name || 'Project' }}</h1>
           <p class="mt-2 max-w-3xl text-sm text-base-content/70">
             Manage software subscriptions, API keys, SSL certificates, and environment credentials linked to this project.
           </p>
@@ -33,17 +33,17 @@
       <div class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm md:stats-horizontal">
         <div class="stat">
           <div class="stat-title">Tracked Items</div>
-          <div class="stat-value text-primary">{{ licenses.length }}</div>
+          <div class="stat-value text-primary">{{ licenses?.length ?? 0 }}</div>
           <div class="stat-desc">Subscriptions, keys, and certificates</div>
         </div>
         <div class="stat">
           <div class="stat-title">Renewals Due</div>
-          <div class="stat-value text-warning">2</div>
+          <div class="stat-value text-warning">{{ (licenses ?? []).filter((l: any) => l.status === 'expiring_soon').length }}</div>
           <div class="stat-desc">Next 30 days</div>
         </div>
         <div class="stat">
           <div class="stat-title">Security Flags</div>
-          <div class="stat-value text-error">1</div>
+          <div class="stat-value text-error">{{ (licenses ?? []).filter((l: any) => l.status === 'expired' || l.status === 'revoked').length }}</div>
           <div class="stat-desc">Credential rotation overdue</div>
         </div>
       </div>
@@ -70,22 +70,28 @@
               <thead>
                 <tr>
                   <th>Item</th>
+                  <th>Label</th>
                   <th>Type</th>
                   <th>Status</th>
                   <th>Owner</th>
                   <th>Renewal</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="item in licenses" :key="item.name">
+                <tr v-for="item in (licenses ?? [])" :key="item.id">
                   <td>
                     <div class="font-medium text-base-content">{{ item.name }}</div>
-                    <div class="text-xs text-base-content/50">{{ item.reference }}</div>
+                    <div class="text-xs text-base-content/50">{{ item.vendor || '—' }}</div>
                   </td>
+                  <td class="text-sm text-base-content/75">{{ item.vendorReference || '—' }}</td>
                   <td class="text-sm text-base-content/75">{{ item.type }}</td>
-                  <td><span class="badge badge-outline" :class="item.statusClass">{{ item.status }}</span></td>
-                  <td class="text-sm text-base-content/75">{{ item.owner }}</td>
-                  <td class="text-sm text-base-content/75">{{ item.renewal }}</td>
+                  <td><span class="badge badge-outline" :class="statusClass(item.status)">{{ item.status }}</span></td>
+                  <td class="text-sm text-base-content/75">{{ item.vendor || '—' }}</td>
+                  <td class="text-sm text-base-content/75">{{ item.renewalDate ? item.renewalDate.slice(0, 10) : '—' }}</td>
+                  <td>
+                    <button class="btn btn-ghost btn-xs" @click="openEditLicenseModal(item)">Edit</button>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -104,7 +110,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isLicenseModalOpen"
       title="Add credential record"
       kicker="Licenses"
@@ -112,91 +118,232 @@
       @close="closeLicenseModal"
     >
       <fieldset class="fieldset gap-3">
-        <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Vendor or tool name" />
-        <input v-model="draft.reference" type="text" class="input input-bordered w-full" placeholder="Reference or description" />
-        <select v-model="draft.type" class="select select-bordered w-full">
-          <option>API key</option>
-          <option>Subscription</option>
-          <option>Certificate</option>
-          <option>License seat</option>
-        </select>
-        <input v-model="draft.owner" type="text" class="input input-bordered w-full" placeholder="Owner or team" />
-        <select v-model="draft.status" class="select select-bordered w-full">
-          <option>Active</option>
-          <option>Renew Soon</option>
-          <option>Rotation Due</option>
-        </select>
-        <input v-model="draft.renewal" type="date" class="input input-bordered w-full" />
-        <p class="label">Store references only in mockups. Real secret handling belongs in secure server-side storage.</p>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Name</span>
+          <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Vendor or tool name" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Reference Label</span>
+          <input v-model="draft.vendorReference" type="text" class="input input-bordered w-full" placeholder="Label (e.g. Production API Key)" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Type</span>
+          <select v-model="draft.type" class="select select-bordered w-full">
+            <option value="api_key">API key</option>
+            <option value="software_subscription">Subscription</option>
+            <option value="ssl_certificate">Certificate</option>
+            <option value="domain">Domain</option>
+            <option value="credential">Credential</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Vendor</span>
+          <input v-model="draft.vendor" type="text" class="input input-bordered w-full" placeholder="Vendor name" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Status</span>
+          <select v-model="draft.status" class="select select-bordered w-full">
+            <option value="active">Active</option>
+            <option value="expiring_soon">Expiring Soon</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Renewal Date</span>
+          <input v-model="draft.renewalDate" type="date" class="input input-bordered w-full" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Notes</span>
+          <textarea v-model="draft.notes" class="textarea textarea-bordered w-full" placeholder="Notes (optional)" />
+        </label>
       </fieldset>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="closeLicenseModal">Cancel</button>
-        <button type="button" class="btn btn-primary" @click="saveLicense">Save mock record</button>
+        <button type="button" class="btn btn-primary" @click="saveLicense">Save record</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
+    <UiWorkspaceModal
+      :open="isEditLicenseModalOpen"
+      title="Edit credential record"
+      kicker="Licenses"
+      description="Update the credential details for this project."
+      @close="closeEditLicenseModal"
+    >
+      <fieldset class="fieldset gap-3">
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Name</span>
+          <input v-model="editDraft.name" type="text" class="input input-bordered w-full" placeholder="Vendor or tool name" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Reference Label</span>
+          <input v-model="editDraft.vendorReference" type="text" class="input input-bordered w-full" placeholder="Label (e.g. Production API Key)" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Type</span>
+          <select v-model="editDraft.type" class="select select-bordered w-full">
+            <option value="api_key">API key</option>
+            <option value="software_subscription">Subscription</option>
+            <option value="ssl_certificate">Certificate</option>
+            <option value="domain">Domain</option>
+            <option value="credential">Credential</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Vendor</span>
+          <input v-model="editDraft.vendor" type="text" class="input input-bordered w-full" placeholder="Vendor name" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Status</span>
+          <select v-model="editDraft.status" class="select select-bordered w-full">
+            <option value="active">Active</option>
+            <option value="expiring_soon">Expiring Soon</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Renewal Date</span>
+          <input v-model="editDraft.renewalDate" type="date" class="input input-bordered w-full" />
+        </label>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Notes</span>
+          <textarea v-model="editDraft.notes" class="textarea textarea-bordered w-full" placeholder="Notes (optional)" />
+        </label>
+      </fieldset>
+
+      <template #actions>
+        <button type="button" class="btn btn-ghost" @click="closeEditLicenseModal">Cancel</button>
+        <button type="button" class="btn btn-primary" @click="saveEditLicense">Save changes</button>
+      </template>
+    </UiWorkspaceModal>
   </div>
 </template>
 
 <script setup lang="ts">
+definePageMeta({ layout: 'default' })
+
 const route = useRoute()
-const projectId = String(route.params.id || '101')
+const projectId = String(route.params.id)
 
-const projectMap: Record<string, { id: string; code: string; name: string }> = {
-  '101': { id: '101', code: 'PRJ-101', name: 'SignalTribe Platform' },
-  '102': { id: '102', code: 'PRJ-102', name: 'OpsDesk CRM' },
-}
-
-const project = projectMap[projectId] || { id: projectId, code: `PRJ-${projectId}`, name: `Project ${projectId}` }
-
-const licenses = reactive([
-  { name: 'Vercel Pro', reference: 'Production hosting workspace', type: 'Subscription', status: 'Active', statusClass: 'badge-success', owner: 'Platform', renewal: '02 Oct 2026' },
-  { name: 'Midtrans API Key', reference: 'Payment provider credential', type: 'API key', status: 'Rotation Due', statusClass: 'badge-error', owner: 'Backend', renewal: '07 Sep 2026' },
-  { name: 'Cloudflare SSL', reference: 'Client custom domain certificate', type: 'Certificate', status: 'Renew Soon', statusClass: 'badge-warning', owner: 'DevOps', renewal: '18 Sep 2026' },
-  { name: 'Sentry Team Seats', reference: 'Error monitoring access', type: 'License seat', status: 'Active', statusClass: 'badge-success', owner: 'Engineering', renewal: '30 Nov 2026' },
-])
+const { data: project } = await useFetch(`/api/projects/${projectId}`)
+const { data: licenses, refresh } = await useFetch('/api/licenses', { query: { projectId } })
 
 const isLicenseModalOpen = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
+function statusClass(status: string) {
+  if (status === 'active') return 'badge-success'
+  if (status === 'expiring_soon') return 'badge-warning'
+  if (status === 'expired' || status === 'revoked') return 'badge-error'
+  return 'badge-neutral'
+}
+
 const draft = reactive({
   name: '',
-  reference: '',
-  type: 'API key',
-  owner: '',
-  status: 'Active',
-  renewal: '',
+  vendor: '',
+  type: 'api_key' as string,
+  notes: '',
+  status: 'active' as string,
+  renewalDate: '',
+  vendorReference: '',
 })
 
 function closeLicenseModal() {
   isLicenseModalOpen.value = false
 }
 
-function saveLicense() {
-  if (!draft.name.trim() || !draft.owner.trim()) {
-    message.value = { type: 'error', text: 'Vendor name and owner are required.' }
+const isEditLicenseModalOpen = ref(false)
+const editingLicenseId = ref('')
+
+const editDraft = reactive({
+  name: '',
+  vendor: '',
+  type: 'api_key' as string,
+  notes: '',
+  status: 'active' as string,
+  renewalDate: '',
+  vendorReference: '',
+})
+
+function openEditLicenseModal(item: any) {
+  editingLicenseId.value = item.id
+  editDraft.name = item.name
+  editDraft.vendor = item.vendor || ''
+  editDraft.type = item.type
+  editDraft.notes = item.notes || ''
+  editDraft.status = item.status
+  editDraft.renewalDate = item.renewalDate ? item.renewalDate.slice(0, 10) : ''
+  editDraft.vendorReference = item.vendorReference || ''
+  isEditLicenseModalOpen.value = true
+}
+
+function closeEditLicenseModal() {
+  isEditLicenseModalOpen.value = false
+}
+
+async function saveEditLicense() {
+  if (!editDraft.name.trim()) {
+    message.value = { type: 'error', text: 'Name is required.' }
     return
   }
 
-  licenses.unshift({
-    name: draft.name.trim(),
-    reference: draft.reference.trim() || 'Project credential record',
-    type: draft.type,
-    status: draft.status,
-    statusClass: draft.status === 'Active' ? 'badge-success' : draft.status === 'Renew Soon' ? 'badge-warning' : 'badge-error',
-    owner: draft.owner.trim(),
-    renewal: draft.renewal || 'Not set',
-  })
-
-  message.value = { type: 'success', text: `${draft.name.trim()} added to the project credential register.` }
-  draft.name = ''
-  draft.reference = ''
-  draft.type = 'API key'
-  draft.owner = ''
-  draft.status = 'Active'
-  draft.renewal = ''
-  closeLicenseModal()
+  try {
+    await $fetch(`/api/licenses/${editingLicenseId.value}`, {
+      method: 'PATCH',
+      body: {
+        name: editDraft.name.trim(),
+        type: editDraft.type,
+        vendor: editDraft.vendor.trim() || undefined,
+        status: editDraft.status,
+        renewalDate: editDraft.renewalDate || undefined,
+        vendorReference: editDraft.vendorReference.trim() || undefined,
+        notes: editDraft.notes.trim() || undefined,
+      },
+    })
+    message.value = { type: 'success', text: `${editDraft.name.trim()} updated.` }
+    closeEditLicenseModal()
+    refresh()
+  } catch (e: any) {
+    message.value = { type: 'error', text: e?.data?.message || 'Failed to update license.' }
+  }
 }
 
-definePageMeta({ layout: 'default' })
+async function saveLicense() {
+  if (!draft.name.trim()) {
+    message.value = { type: 'error', text: 'Name is required.' }
+    return
+  }
+
+  try {
+    await $fetch('/api/licenses', {
+      method: 'POST',
+      body: {
+        projectId,
+        name: draft.name.trim(),
+        type: draft.type,
+        vendor: draft.vendor.trim() || undefined,
+        status: draft.status,
+        renewalDate: draft.renewalDate || undefined,
+        vendorReference: draft.vendorReference.trim() || undefined,
+        notes: draft.notes.trim() || undefined,
+      },
+    })
+    message.value = { type: 'success', text: `${draft.name.trim()} added to the credential register.` }
+    draft.name = ''
+    draft.vendor = ''
+    draft.type = 'api_key'
+    draft.notes = ''
+    draft.status = 'active'
+    draft.renewalDate = ''
+    draft.vendorReference = ''
+    closeLicenseModal()
+    refresh()
+  } catch (e: any) {
+    message.value = { type: 'error', text: e?.data?.message || 'Failed to save license.' }
+  }
+}
 </script>

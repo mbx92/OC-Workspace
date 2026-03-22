@@ -4,29 +4,28 @@
       <div class="breadcrumbs text-sm text-base-content/60">
         <ul>
           <li><NuxtLink to="/projects">Projects</NuxtLink></li>
-          <li>{{ project.code }}</li>
+          <li><NuxtLink :to="`/projects/${projectId}`">{{ project?.code || projectId }}</NuxtLink></li>
         </ul>
       </div>
 
       <div class="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/50">Development Workspace</p>
-          <h1 class="mt-2 text-3xl font-bold text-base-content">{{ project.name }}</h1>
-          <p class="mt-2 max-w-3xl text-sm text-base-content/70">{{ project.summary }}</p>
+          <h1 class="mt-2 text-3xl font-bold text-base-content">{{ project?.name || 'Project' }}</h1>
+          <p class="mt-2 max-w-3xl text-sm text-base-content/70">{{ project?.notes || 'Development workspace' }}</p>
           <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-base-content/65">
-            <span class="badge badge-outline" :class="project.statusClass">{{ project.status }}</span>
-            <span>Client: {{ project.client }}</span>
-            <span>Deadline: {{ project.deadline }}</span>
-            <span>Owner: {{ project.owner }}</span>
+            <span class="badge badge-outline" :class="statusClass(project?.status || '')">{{ project?.status }}</span>
+            <span>Client: {{ project?.clientName || '—' }}</span>
+            <span>Deadline: {{ project?.deadline ? project.deadline.slice(0, 10) : '—' }}</span>
           </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <NuxtLink :to="`/projects/${project.id}/licenses`" class="btn btn-outline btn-sm">
+          <NuxtLink :to="`/projects/${projectId}/licenses`" class="btn btn-outline btn-sm">
             <IconCertificate class="h-4 w-4" />
             Licenses
           </NuxtLink>
-          <NuxtLink :to="`/projects/${project.id}/legal`" class="btn btn-outline btn-sm">
+          <NuxtLink :to="`/projects/${projectId}/legal`" class="btn btn-outline btn-sm">
             <IconScale class="h-4 w-4" />
             Legal Workspace
           </NuxtLink>
@@ -101,7 +100,7 @@
 
             <select v-model="filters.assignee" class="select select-bordered select-sm w-full lg:w-40">
               <option value="">All assignees</option>
-              <option v-for="option in assigneeOptions" :key="option" :value="option">{{ option }}</option>
+              <option v-for="m in assigneeOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
 
             <label class="label cursor-pointer justify-start gap-2 rounded-box border border-base-300 px-3 py-2 lg:justify-center">
@@ -129,24 +128,35 @@
                   <th>{{ relationshipLabel }}</th>
                   <th>Assignee</th>
                   <th>Due</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="item in filteredItems" :key="item.id">
-                  <td class="font-mono text-xs text-base-content/60">{{ item.id }}</td>
+                  <td class="font-mono text-xs text-base-content/60">{{ item.id.slice(0, 8) }}</td>
                   <td class="min-w-72">
                     <div class="font-medium text-base-content">{{ item.title }}</div>
-                    <div class="mt-1 text-xs text-base-content/50">{{ item.note }}</div>
+                    <div class="mt-1 text-xs text-base-content/50">{{ item.description }}</div>
                   </td>
-                  <td><span class="badge badge-outline" :class="item.statusClass">{{ item.status }}</span></td>
+                  <td><span class="badge badge-outline" :class="statusClass(item.status)">{{ item.status }}</span></td>
                   <td class="text-sm text-base-content/75">{{ item.priority }}</td>
                   <td class="text-sm text-base-content/75">
                     <div class="font-medium text-base-content">{{ relationshipValue(item) }}</div>
                     <div v-if="relationshipMeta(item)" class="text-xs text-base-content/50">{{ relationshipMeta(item) }}</div>
                   </td>
-                  <td class="text-sm text-base-content/75">{{ item.assignee }}</td>
-                  <td class="text-sm" :class="isOverdue(item.due) ? 'font-semibold text-error' : 'text-base-content/75'">
-                    {{ formatDue(item.due) }}
+                  <td class="text-sm text-base-content/75">
+                    <div v-if="(item.assignees as any[])?.length" class="flex flex-wrap gap-1">
+                      <span v-for="a in (item.assignees as any[])" :key="a.userId" class="badge badge-ghost badge-sm">
+                        {{ a.name || a.userId?.slice(0, 8) }}
+                      </span>
+                    </div>
+                    <span v-else class="text-base-content/40">—</span>
+                  </td>
+                  <td class="text-sm" :class="isOverdue(item.dueDate) ? 'font-semibold text-error' : 'text-base-content/75'">
+                    {{ formatDue(item.dueDate) }}
+                  </td>
+                  <td>
+                    <button class="btn btn-ghost btn-xs" @click.stop="openEditModal(item)">Edit</button>
                   </td>
                 </tr>
                 <tr v-if="!filteredItems.length">
@@ -181,14 +191,17 @@
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <p class="text-sm font-semibold text-base-content">{{ item.title }}</p>
-                    <p class="text-xs text-base-content/55">{{ item.id }} - {{ item.kind }}</p>
+                    <p class="text-xs text-base-content/55 capitalize">{{ item.kind }}</p>
                   </div>
-                  <span class="badge badge-outline" :class="item.statusClass">{{ item.status }}</span>
+                  <span class="badge badge-outline" :class="statusClass(item.status)">{{ item.status }}</span>
                 </div>
-                <div class="mt-2 flex flex-wrap gap-2 text-xs text-base-content/65">
-                  <span>{{ item.assignee }}</span>
-                  <span>{{ item.priority }}</span>
-                  <span>{{ formatDue(item.due) }}</span>
+                <div class="mt-2 flex flex-wrap items-center gap-1 text-xs text-base-content/65">
+                  <span v-if="item.assignees?.length">{{ item.assignees.map((a: any) => a.name || a.userId?.slice(0, 8)).join(', ') }}</span>
+                  <span v-else>—</span>
+                  <span class="text-base-content/30">·</span>
+                  <span class="capitalize">{{ item.priority }}</span>
+                  <span class="text-base-content/30">·</span>
+                  <span>{{ formatDue(item.dueDate) }}</span>
                 </div>
               </div>
             </div>
@@ -215,6 +228,28 @@
         </div>
 
         <div class="card border border-base-300 bg-base-100 shadow-sm">
+          <div class="card-body p-0">
+            <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
+              <h2 class="text-lg font-semibold text-base-content">Project Team</h2>
+              <button class="btn btn-ghost btn-xs gap-1" @click="isAssignMemberModalOpen = true">
+                <IconCirclePlus class="h-4 w-4" />
+                Assign
+              </button>
+            </div>
+            <div class="divide-y divide-base-300">
+              <div v-for="member in (projectMembers ?? [])" :key="(member as any).id" class="flex items-center justify-between px-5 py-3 text-sm">
+                <div>
+                  <div class="font-medium text-base-content">{{ (member as any).user?.name || (member as any).userId?.slice(0, 8) }}</div>
+                  <div class="text-xs text-base-content/55">{{ (member as any).role }}</div>
+                </div>
+                <button class="btn btn-ghost btn-xs text-error" @click="removeMember((member as any).id)">Remove</button>
+              </div>
+              <div v-if="!(projectMembers ?? []).length" class="px-5 py-4 text-sm text-base-content/50">No members assigned yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
             <h2 class="card-title text-lg">Workspace Rules</h2>
             <ul class="space-y-3 text-sm text-base-content/75">
@@ -227,7 +262,35 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
+      :open="isAssignMemberModalOpen"
+      title="Assign team member"
+      kicker="Project Team"
+      description="Add a team member to this project with their project-level role."
+      @close="closeAssignModal"
+    >
+      <div class="grid gap-3">
+        <select v-model="assignDraft.userId" class="select select-bordered w-full">
+          <option value="">Select team member</option>
+          <option v-for="u in (allUsers ?? [])" :key="(u as any).id" :value="(u as any).id">
+            {{ (u as any).name }} ({{ (u as any).role }})
+          </option>
+        </select>
+        <select v-model="assignDraft.role" class="select select-bordered w-full">
+          <option value="lead">Lead</option>
+          <option value="member">Member</option>
+          <option value="reviewer">Reviewer</option>
+          <option value="observer">Observer</option>
+        </select>
+      </div>
+
+      <template #actions>
+        <button type="button" class="btn btn-ghost" @click="closeAssignModal">Cancel</button>
+        <button type="button" class="btn btn-primary" @click="assignMember">Assign member</button>
+      </template>
+    </UiWorkspaceModal>
+
+    <UiWorkspaceModal
       :open="isCreateModalOpen"
       :title="`Create ${singularLabel}`"
       kicker="Quick Create"
@@ -253,16 +316,21 @@
           </select>
         </label>
 
-        <label class="form-control w-full">
-          <span class="label-text mb-2 font-medium">Assignee</span>
-          <select v-model="draft.assignee" class="select select-bordered w-full">
-            <option v-for="option in teamMembers" :key="option" :value="option">{{ option }}</option>
-          </select>
+        <label class="form-control w-full md:col-span-2">
+          <span class="label-text mb-2 font-medium">Assignees</span>
+          <div class="max-h-40 overflow-y-auto rounded-box border border-base-300 p-2">
+            <label v-for="m in (projectMembers ?? [])" :key="(m as any).userId" class="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-base-200">
+              <input type="checkbox" class="checkbox checkbox-primary checkbox-sm" :value="(m as any).userId" v-model="draft.assigneeIds" />
+              <span class="text-sm">{{ (m as any).user?.name || (m as any).userId?.slice(0, 8) }}</span>
+              <span class="text-xs text-base-content/50">{{ (m as any).role }}</span>
+            </label>
+            <div v-if="!(projectMembers ?? []).length" class="py-2 text-center text-sm text-base-content/50">No team members yet.</div>
+          </div>
         </label>
 
         <label class="form-control w-full">
           <span class="label-text mb-2 font-medium">Due date</span>
-          <input v-model="draft.due" type="date" class="input input-bordered w-full" />
+          <input v-model="draft.dueDate" type="date" class="input input-bordered w-full" />
         </label>
 
         <label v-if="activeTab === 'features'" class="form-control w-full">
@@ -281,38 +349,38 @@
 
         <label v-if="activeTab !== 'features'" class="form-control w-full">
           <span class="label-text mb-2 font-medium">Related feature</span>
-          <select v-model="draft.relatedFeature" class="select select-bordered w-full">
+          <select v-model="draft.featureId" class="select select-bordered w-full">
             <option value="">No linked feature</option>
-            <option v-for="item in records.features" :key="item.id" :value="item.id">{{ item.id }} - {{ item.title }}</option>
+            <option v-for="item in records.features" :key="item.id" :value="item.id">{{ item.title }}</option>
           </select>
         </label>
 
         <label v-if="activeTab === 'bugs'" class="form-control w-full">
           <span class="label-text mb-2 font-medium">Severity</span>
           <select v-model="draft.severity" class="select select-bordered w-full">
-            <option>Critical</option>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
           </select>
         </label>
 
         <label v-if="activeTab === 'tasks'" class="form-control w-full">
           <span class="label-text mb-2 font-medium">Related bug</span>
-          <select v-model="draft.relatedBug" class="select select-bordered w-full">
+          <select v-model="draft.bugId" class="select select-bordered w-full">
             <option value="">No linked bug</option>
-            <option v-for="item in records.bugs" :key="item.id" :value="item.id">{{ item.id }} - {{ item.title }}</option>
+            <option v-for="item in records.bugs" :key="item.id" :value="item.id">{{ item.title }}</option>
           </select>
         </label>
 
         <label v-if="activeTab === 'tasks'" class="form-control w-full">
-          <span class="label-text mb-2 font-medium">Estimate</span>
-          <input v-model="draft.estimate" type="text" class="input input-bordered w-full" />
+          <span class="label-text mb-2 font-medium">Estimate (hours)</span>
+          <input v-model="draft.estimateHours" type="number" class="input input-bordered w-full" />
         </label>
 
         <label class="form-control w-full md:col-span-2">
-          <span class="label-text mb-2 font-medium">Operational note</span>
-          <textarea v-model="draft.note" class="textarea textarea-bordered h-28 w-full resize-none" />
+          <span class="label-text mb-2 font-medium">Description</span>
+          <textarea v-model="draft.description" class="textarea textarea-bordered h-28 w-full resize-none" />
         </label>
       </div>
 
@@ -320,7 +388,107 @@
         <button class="btn btn-ghost" type="button" @click="closeCreateModal">Cancel</button>
         <button class="btn btn-primary" type="button" :disabled="!draft.title.trim()" @click="createItem">Save {{ singularLabel }}</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
+
+    <UiWorkspaceModal
+      :open="isEditModalOpen"
+      :title="`Edit ${singularLabel}`"
+      kicker="Quick Edit"
+      @close="closeEditModal"
+    >
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="form-control w-full md:col-span-2">
+          <span class="label-text mb-2 font-medium">Title</span>
+          <input v-model="editDraft.title" type="text" class="input input-bordered w-full" />
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Status</span>
+          <select v-model="editDraft.status" class="select select-bordered w-full">
+            <option v-for="option in statusOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Priority</span>
+          <select v-model="editDraft.priority" class="select select-bordered w-full">
+            <option v-for="option in priorityOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </label>
+
+        <label class="form-control w-full md:col-span-2">
+          <span class="label-text mb-2 font-medium">Assignees</span>
+          <div class="max-h-40 overflow-y-auto rounded-box border border-base-300 p-2">
+            <label v-for="m in (projectMembers ?? [])" :key="(m as any).userId" class="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-base-200">
+              <input type="checkbox" class="checkbox checkbox-primary checkbox-sm" :value="(m as any).userId" v-model="editDraft.assigneeIds" />
+              <span class="text-sm">{{ (m as any).user?.name || (m as any).userId?.slice(0, 8) }}</span>
+              <span class="text-xs text-base-content/50">{{ (m as any).role }}</span>
+            </label>
+            <div v-if="!(projectMembers ?? []).length" class="py-2 text-center text-sm text-base-content/50">No team members yet.</div>
+          </div>
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Due date</span>
+          <input v-model="editDraft.dueDate" type="date" class="input input-bordered w-full" />
+        </label>
+
+        <label v-if="activeTab === 'features'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Business value</span>
+          <select v-model="editDraft.businessValue" class="select select-bordered w-full">
+            <option>High</option>
+            <option>Medium</option>
+            <option>Low</option>
+          </select>
+        </label>
+
+        <label v-if="activeTab === 'features'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Target release</span>
+          <input v-model="editDraft.targetRelease" type="text" class="input input-bordered w-full" />
+        </label>
+
+        <label v-if="activeTab !== 'features'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Related feature</span>
+          <select v-model="editDraft.featureId" class="select select-bordered w-full">
+            <option value="">No linked feature</option>
+            <option v-for="feat in records.features" :key="feat.id" :value="feat.id">{{ feat.title }}</option>
+          </select>
+        </label>
+
+        <label v-if="activeTab === 'bugs'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Severity</span>
+          <select v-model="editDraft.severity" class="select select-bordered w-full">
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+
+        <label v-if="activeTab === 'tasks'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Related bug</span>
+          <select v-model="editDraft.bugId" class="select select-bordered w-full">
+            <option value="">No linked bug</option>
+            <option v-for="bug in records.bugs" :key="bug.id" :value="bug.id">{{ bug.title }}</option>
+          </select>
+        </label>
+
+        <label v-if="activeTab === 'tasks'" class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Estimate (hours)</span>
+          <input v-model="editDraft.estimateHours" type="number" class="input input-bordered w-full" />
+        </label>
+
+        <label class="form-control w-full md:col-span-2">
+          <span class="label-text mb-2 font-medium">Description</span>
+          <textarea v-model="editDraft.description" class="textarea textarea-bordered h-28 w-full resize-none" />
+        </label>
+      </div>
+
+      <template #actions>
+        <button class="btn btn-ghost" type="button" @click="closeEditModal">Cancel</button>
+        <button class="btn btn-primary" type="button" :disabled="!editDraft.title.trim()" @click="saveEdit">Save changes</button>
+      </template>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -335,70 +503,32 @@ import {
   IconScale,
   IconTool,
 } from '@tabler/icons-vue'
-import { appendAuditEntry } from '~/data/audit'
 
 definePageMeta({ layout: 'default' })
 
 type TabKey = 'features' | 'bugs' | 'tasks'
-type Item = {
-  id: string
-  title: string
-  note: string
-  status: string
-  statusClass: string
-  priority: string
-  assignee: string
-  due: string
-  kind?: string
-  relatedFeature?: string
-  relatedBug?: string
-  linkedTasks?: number
-  linkedBugs?: number
-  businessValue?: string
-  targetRelease?: string
-  severity?: string
-  estimate?: string
-}
 
 const route = useRoute()
-const projectId = String(route.params.id || '101')
-const today = new Date('2026-03-21')
+const projectId = String(route.params.id)
+const today = new Date()
 
-const projectMap = {
-  '101': {
-    id: 101,
-    code: 'PRJ-101',
-    name: 'SignalTribe Platform',
-    client: 'TradeCorp Asia',
-    status: 'Active',
-    statusClass: 'badge-success',
-    deadline: '24 Oct 2026',
-    owner: 'Aulia',
-    summary: 'Core delivery workspace for features, bugs, tasks, legal approvals, and production credentials.',
-  },
-  '102': {
-    id: 102,
-    code: 'PRJ-102',
-    name: 'OpsDesk CRM',
-    client: 'Northwind Systems',
-    status: 'Planning',
-    statusClass: 'badge-neutral',
-    deadline: '14 Nov 2026',
-    owner: 'Nadia',
-    summary: 'Planning workspace for backlog shaping, proposal refinement, and project onboarding.',
-  },
-}
+const { data: project } = await useFetch(`/api/projects/${projectId}`)
+const { data: featuresData, refresh: refreshFeatures } = await useFetch('/api/features', { query: { projectId } })
+const { data: bugsData, refresh: refreshBugs } = await useFetch('/api/bugs', { query: { projectId } })
+const { data: tasksData, refresh: refreshTasks } = await useFetch('/api/tasks', { query: { projectId } })
+const { data: projectMembers, refresh: refreshMembers } = await useFetch(`/api/projects/${projectId}/members`)
+const { data: allUsers } = await useFetch('/api/team')
 
-const project = projectMap[projectId as keyof typeof projectMap] || {
-  id: Number(projectId) || 999,
-  code: `PRJ-${projectId}`,
-  name: `Project ${projectId}`,
-  client: 'Client account',
-  status: 'Active',
-  statusClass: 'badge-success',
-  deadline: 'TBD',
-  owner: 'Project owner',
-  summary: 'Reusable project workspace for development operations.',
+const records = computed(() => ({
+  features: (featuresData.value as any[]) ?? [],
+  bugs: (bugsData.value as any[]) ?? [],
+  tasks: (tasksData.value as any[]) ?? [],
+}))
+
+function refreshAll() {
+  refreshFeatures()
+  refreshBugs()
+  refreshTasks()
 }
 
 const tabs = [
@@ -407,109 +537,207 @@ const tabs = [
   { key: 'tasks' as TabKey, label: 'Tasks', icon: IconClipboardList },
 ]
 
-const seed: Record<string, Record<TabKey, Item[]>> = {
-  '101': {
-    features: [
-      { id: 'FE-101', title: 'Subscription plan management', note: 'Billing controls and pricing matrix.', status: 'In Progress', statusClass: 'badge-primary', priority: 'High', assignee: 'Aulia', due: '2026-03-28', linkedTasks: 4, linkedBugs: 2, businessValue: 'High', targetRelease: 'Release 2.4', kind: 'Feature' },
-      { id: 'FE-102', title: 'Analyst profile verification', note: 'KYC checklist and approval flow.', status: 'Planned', statusClass: 'badge-info', priority: 'Medium', assignee: 'Nadia', due: '2026-04-02', linkedTasks: 3, linkedBugs: 0, businessValue: 'Medium', targetRelease: 'Sprint 14', kind: 'Feature' },
-      { id: 'FE-103', title: 'Client handoff export bundle', note: 'Release notes, credentials, and legal summary.', status: 'Blocked', statusClass: 'badge-warning', priority: 'High', assignee: 'Rizal', due: '2026-03-23', linkedTasks: 2, linkedBugs: 1, businessValue: 'High', targetRelease: 'Release 2.5', kind: 'Feature' },
-    ],
-    bugs: [
-      { id: 'BG-220', title: 'Webhook retry duplicates invoice', note: 'Triggered after timeout under load.', status: 'Open', statusClass: 'badge-warning', priority: 'High', assignee: 'Ihsan', due: '2026-03-22', severity: 'High', relatedFeature: 'FE-101', linkedTasks: 2, kind: 'Bug' },
-      { id: 'BG-221', title: 'Role guard bypass on draft preview', note: 'Project-level ownership check is incomplete.', status: 'In Progress', statusClass: 'badge-primary', priority: 'Critical', assignee: 'Lutfi', due: '2026-03-21', severity: 'Critical', relatedFeature: 'FE-103', linkedTasks: 1, kind: 'Bug' },
-      { id: 'BG-222', title: 'Notification badge not refreshed', note: 'Mobile dashboard state remains stale.', status: 'Resolved', statusClass: 'badge-success', priority: 'Low', assignee: 'Dina', due: '2026-03-27', severity: 'Low', relatedFeature: '', linkedTasks: 1, kind: 'Bug' },
-    ],
-    tasks: [
-      { id: 'TS-501', title: 'Prepare agreement revision', note: 'Update payment milestone wording.', status: 'Review', statusClass: 'badge-info', priority: 'Medium', assignee: 'Salsa', due: '2026-03-25', relatedFeature: 'FE-103', estimate: '4h', kind: 'Task' },
-      { id: 'TS-502', title: 'Rotate production API token', note: 'Coordinate secret cutover with release checklist.', status: 'Blocked', statusClass: 'badge-warning', priority: 'High', assignee: 'Fikri', due: '2026-03-20', relatedBug: 'BG-220', estimate: '2h', kind: 'Task' },
-      { id: 'TS-503', title: 'Confirm project scope delta', note: 'Needs owner approval before sprint lock.', status: 'In Progress', statusClass: 'badge-primary', priority: 'High', assignee: 'Nadia', due: '2026-03-24', relatedFeature: 'FE-102', estimate: '1 day', kind: 'Task' },
-      { id: 'TS-504', title: 'Write retry idempotency tests', note: 'Attach to webhook duplicate issue.', status: 'Todo', statusClass: 'badge-neutral', priority: 'Medium', assignee: 'Ihsan', due: '2026-03-23', relatedFeature: 'FE-101', relatedBug: 'BG-220', estimate: '6h', kind: 'Task' },
-    ],
-  },
-  '102': {
-    features: [
-      { id: 'FE-201', title: 'Lead pipeline board', note: 'Initial CRM lane setup.', status: 'Backlog', statusClass: 'badge-neutral', priority: 'High', assignee: 'Nadia', due: '2026-04-08', linkedTasks: 2, linkedBugs: 0, businessValue: 'High', targetRelease: 'MVP', kind: 'Feature' },
-      { id: 'FE-202', title: 'Sales activity timeline', note: 'Display calls and contact history.', status: 'Planned', statusClass: 'badge-info', priority: 'Medium', assignee: 'Rizal', due: '2026-04-12', linkedTasks: 3, linkedBugs: 0, businessValue: 'Medium', targetRelease: 'Phase 1', kind: 'Feature' },
-    ],
-    bugs: [
-      { id: 'BG-301', title: 'Demo seed account missing role mapping', note: 'Mockup access matrix is incomplete.', status: 'Open', statusClass: 'badge-warning', priority: 'Medium', assignee: 'Lutfi', due: '2026-03-26', severity: 'Medium', relatedFeature: 'FE-201', linkedTasks: 1, kind: 'Bug' },
-    ],
-    tasks: [
-      { id: 'TS-601', title: 'Draft milestones and ownership matrix', note: 'Prepare project kickoff pack.', status: 'Todo', statusClass: 'badge-neutral', priority: 'High', assignee: 'Aulia', due: '2026-03-29', relatedFeature: 'FE-201', estimate: '1 day', kind: 'Task' },
-      { id: 'TS-602', title: 'Finalize proposal assumptions', note: 'Sync pricing and scope assumptions.', status: 'Review', statusClass: 'badge-info', priority: 'High', assignee: 'Nadia', due: '2026-03-27', estimate: '3h', kind: 'Task' },
-    ],
-  },
-}
-
-const records = reactive<Record<TabKey, Item[]>>(JSON.parse(JSON.stringify(seed[projectId] || { features: [], bugs: [], tasks: [] })))
 const activeTab = ref<TabKey>('features')
 const isCreateModalOpen = ref(false)
 const filters = reactive({ query: '', status: '', priority: '', assignee: '', attentionOnly: false })
-const priorityOptions = ['Critical', 'High', 'Medium', 'Low']
+const priorityOptions = ['critical', 'high', 'medium', 'low']
 const statusMap: Record<TabKey, string[]> = {
-  features: ['Backlog', 'Planned', 'In Progress', 'Blocked', 'Done', 'Cancelled'],
-  bugs: ['Open', 'In Progress', 'Resolved', 'Verified', 'Closed'],
-  tasks: ['Todo', 'In Progress', 'Blocked', 'Review', 'Done'],
+  features: ['backlog', 'planned', 'in-progress', 'blocked', 'done', 'cancelled'],
+  bugs: ['open', 'in-progress', 'resolved', 'verified', 'closed'],
+  tasks: ['todo', 'in-progress', 'blocked', 'review', 'done'],
 }
 
-const teamMembers = Array.from(new Set(Object.values(records).flat().map(item => item.assignee)))
-const draft = reactive({
-  title: '',
-  status: 'Backlog',
-  priority: 'Medium',
-  assignee: teamMembers[0] || 'Unassigned',
-  due: '',
-  note: '',
-  businessValue: 'Medium',
-  targetRelease: '',
-  severity: 'Medium',
-  relatedFeature: '',
-  relatedBug: '',
-  estimate: '',
+const workloadMemberIds = computed(() => {
+  const all = [...records.value.features, ...records.value.bugs, ...records.value.tasks]
+  const ids = new Set<string>()
+  for (const item of all) for (const a of (item as any).assignees ?? []) ids.add(a.userId)
+  return Array.from(ids)
 })
 
-const activeRecords = computed(() => records[activeTab.value])
+const draft = reactive({
+  title: '',
+  status: 'backlog',
+  priority: 'medium',
+  assigneeIds: [] as string[],
+  dueDate: '',
+  description: '',
+  businessValue: 'Medium',
+  targetRelease: '',
+  severity: 'medium',
+  featureId: '',
+  bugId: '',
+  estimateHours: '',
+})
+
+const activeRecords = computed(() => records.value[activeTab.value])
 const activeTabLabel = computed(() => tabs.find(tab => tab.key === activeTab.value)?.label || 'Items')
 const singularLabel = computed(() => activeTabLabel.value.replace(/s$/, ''))
 const statusOptions = computed(() => statusMap[activeTab.value])
-const assigneeOptions = computed(() => Array.from(new Set(activeRecords.value.map(item => item.assignee))).sort())
+const assigneeOptions = computed(() =>
+  (projectMembers.value as any[] ?? []).map((m: any) => ({
+    value: (m as any).userId,
+    label: (m as any).user?.name || (m as any).userId?.slice(0, 8),
+  }))
+)
 
 const filteredItems = computed(() =>
-  activeRecords.value.filter((item) => {
+  activeRecords.value.filter((item: any) => {
     const query = filters.query.trim().toLowerCase()
-    const matchesQuery = !query || [item.id, item.title, item.note, item.assignee, item.relatedFeature, item.relatedBug].filter(Boolean).some(value => String(value).toLowerCase().includes(query))
+    const matchesQuery = !query || [item.title, item.description].filter(Boolean).some((value: string) => value.toLowerCase().includes(query))
     const matchesStatus = !filters.status || item.status === filters.status
     const matchesPriority = !filters.priority || item.priority === filters.priority
-    const matchesAssignee = !filters.assignee || item.assignee === filters.assignee
+    const matchesAssignee = !filters.assignee || ((item.assignees as any[]) ?? []).some((a: any) => a.userId === filters.assignee)
     const matchesAttention = !filters.attentionOnly || isAttention(item)
     return matchesQuery && matchesStatus && matchesPriority && matchesAssignee && matchesAttention
   }),
 )
 
 const stats = computed(() => ({
-  activeFeatures: records.features.filter(item => ['Planned', 'In Progress'].includes(item.status)).length,
-  blockedFeatures: records.features.filter(item => item.status === 'Blocked').length,
-  openBugs: records.bugs.filter(item => ['Open', 'In Progress'].includes(item.status)).length,
-  criticalBugs: records.bugs.filter(item => item.priority === 'Critical' || item.severity === 'Critical').length,
-  overdueTasks: records.tasks.filter(item => isOverdue(item.due) && item.status !== 'Done').length,
-  reviewTasks: records.tasks.filter(item => item.status === 'Review').length,
+  activeFeatures: records.value.features.filter((item: any) => ['planned', 'in-progress'].includes(item.status)).length,
+  blockedFeatures: records.value.features.filter((item: any) => item.status === 'blocked').length,
+  openBugs: records.value.bugs.filter((item: any) => ['open', 'in-progress'].includes(item.status)).length,
+  criticalBugs: records.value.bugs.filter((item: any) => item.priority === 'critical' || item.severity === 'critical').length,
+  overdueTasks: records.value.tasks.filter((item: any) => isOverdue(item.dueDate) && item.status !== 'done').length,
+  reviewTasks: records.value.tasks.filter((item: any) => item.status === 'review').length,
 }))
 
 const attentionItems = computed(() =>
-  Object.entries(records).flatMap(([kind, items]) =>
+  Object.entries(records.value).flatMap(([kind, items]: [string, any[]]) =>
     items.filter(isAttention).map(item => ({ ...item, kind: kind.slice(0, -1) })),
   ).slice(0, 5),
 )
 
 const workload = computed(() =>
-  teamMembers.map((name) => ({
-    name,
-    count: Object.values(records).flat().filter(item => item.assignee === name && !['Done', 'Closed', 'Resolved', 'Verified', 'Cancelled'].includes(item.status)).length,
+  workloadMemberIds.value.map((id: string) => ({
+    name: assigneeName(id),
+    count: [...records.value.features, ...records.value.bugs, ...records.value.tasks].filter((item: any) => ((item.assignees as any[]) ?? []).some((a: any) => a.userId === id) && !['done', 'closed', 'resolved', 'verified', 'cancelled'].includes(item.status)).length,
   })).sort((a, b) => b.count - a.count),
 )
 
 const workloadMax = computed(() => Math.max(...workload.value.map(item => item.count), 1))
-const relationshipLabel = computed(() => activeTab.value === 'features' ? 'Delivery Links' : activeTab.value === 'bugs' ? 'Feature / Tasks' : 'Feature / Bug')
+
+const memberByUserId = computed(() => {
+  const map: Record<string, any> = {}
+  for (const m of (projectMembers.value as any[] ?? [])) map[(m as any).userId] = m
+  return map
+})
+
+function assigneeName(userId: string | null | undefined) {
+  if (!userId) return '—'
+  const m = memberByUserId.value[userId]
+  return (m as any)?.user?.name || userId.slice(0, 8)
+}
+
+const relationshipLabel = computed(() => activeTab.value === 'features' ? 'Delivery Links' : activeTab.value === 'bugs' ? 'Feature' : 'Feature / Bug')
+
+function statusClass(status: string) {
+  const map: Record<string, string> = {
+    backlog: 'badge-neutral', planned: 'badge-info', 'in-progress': 'badge-primary',
+    blocked: 'badge-warning', done: 'badge-success', cancelled: 'badge-error',
+    open: 'badge-warning', resolved: 'badge-success', verified: 'badge-info', closed: 'badge-success',
+    todo: 'badge-neutral', review: 'badge-info',
+    active: 'badge-success', planning: 'badge-neutral', at_risk: 'badge-warning', completed: 'badge-info',
+  }
+  return map[status] || 'badge-neutral'
+}
+
+const isAssignMemberModalOpen = ref(false)
+const assignDraft = reactive({ userId: '', role: 'member' })
+
+const editingItem = ref<any>(null)
+const isEditModalOpen = computed(() => !!editingItem.value)
+const editDraft = reactive({
+  title: '', status: '', priority: '', assigneeIds: [] as string[],
+  dueDate: '', description: '', businessValue: 'Medium',
+  targetRelease: '', severity: 'medium', featureId: '', bugId: '', estimateHours: '' as string | number,
+})
+
+function closeAssignModal() {
+  isAssignMemberModalOpen.value = false
+  assignDraft.userId = ''
+  assignDraft.role = 'member'
+}
+
+async function assignMember() {
+  if (!assignDraft.userId) return
+  try {
+    await $fetch(`/api/projects/${projectId}/members`, {
+      method: 'POST',
+      body: { userId: assignDraft.userId, role: assignDraft.role },
+    })
+    await refreshMembers()
+    closeAssignModal()
+  } catch (e: any) {
+    console.error('Failed to assign member:', e)
+  }
+}
+
+async function removeMember(memberId: string) {
+  try {
+    await $fetch(`/api/projects/${projectId}/members/${memberId}`, { method: 'DELETE' })
+    await refreshMembers()
+  } catch (e: any) {
+    console.error('Failed to remove member:', e)
+  }
+}
+
+function openEditModal(item: any) {
+  editingItem.value = item
+  editDraft.title = item.title || ''
+  editDraft.status = item.status || ''
+  editDraft.priority = item.priority || ''
+  editDraft.assigneeIds = (item.assignees as any[] ?? []).map((a: any) => a.userId)
+  editDraft.dueDate = item.dueDate?.slice(0, 10) || ''
+  editDraft.description = item.description || ''
+  editDraft.businessValue = item.businessValue || 'Medium'
+  editDraft.targetRelease = item.targetRelease || ''
+  editDraft.severity = item.severity || 'medium'
+  editDraft.featureId = item.featureId || ''
+  editDraft.bugId = item.bugId || ''
+  editDraft.estimateHours = item.estimateHours ?? ''
+}
+
+function closeEditModal() {
+  editingItem.value = null
+}
+
+async function saveEdit() {
+  if (!editingItem.value) return
+  const tab = activeTab.value
+  const id = editingItem.value.id
+  const endpoint = tab === 'features' ? `/api/features/${id}` : tab === 'bugs' ? `/api/bugs/${id}` : `/api/tasks/${id}`
+  try {
+    const body: any = {
+      title: editDraft.title.trim() || undefined,
+      status: editDraft.status || undefined,
+      priority: editDraft.priority || undefined,
+      dueDate: editDraft.dueDate || null,
+      description: editDraft.description.trim() || null,
+      assigneeIds: editDraft.assigneeIds,
+    }
+    if (tab === 'features') {
+      body.businessValue = editDraft.businessValue || null
+      body.targetRelease = editDraft.targetRelease || null
+    } else {
+      if (tab === 'bugs') {
+        body.severity = editDraft.severity || undefined
+        body.featureId = editDraft.featureId || null
+      }
+      if (tab === 'tasks') {
+        body.featureId = editDraft.featureId || null
+        body.bugId = editDraft.bugId || null
+        body.estimateHours = editDraft.estimateHours !== '' ? Number(editDraft.estimateHours) : null
+      }
+    }
+    await $fetch(endpoint, { method: 'PATCH', body })
+    if (tab === 'features') refreshFeatures()
+    else if (tab === 'bugs') refreshBugs()
+    else refreshTasks()
+    closeEditModal()
+  } catch (e: any) {
+    console.error('Failed to update item:', e)
+  }
+}
 
 watch(activeTab, () => {
   resetFilters()
@@ -526,17 +754,17 @@ function resetFilters() {
 
 function resetDraft() {
   draft.title = ''
-  draft.status = activeTab.value === 'features' ? 'Backlog' : activeTab.value === 'bugs' ? 'Open' : 'Todo'
-  draft.priority = activeTab.value === 'bugs' ? 'High' : 'Medium'
-  draft.assignee = assigneeOptions.value[0] || teamMembers[0] || 'Unassigned'
-  draft.due = ''
-  draft.note = ''
+  draft.status = activeTab.value === 'features' ? 'backlog' : activeTab.value === 'bugs' ? 'open' : 'todo'
+  draft.priority = activeTab.value === 'bugs' ? 'high' : 'medium'
+  draft.assigneeIds = []
+  draft.dueDate = ''
+  draft.description = ''
   draft.businessValue = 'Medium'
   draft.targetRelease = ''
-  draft.severity = 'Medium'
-  draft.relatedFeature = ''
-  draft.relatedBug = ''
-  draft.estimate = ''
+  draft.severity = 'medium'
+  draft.featureId = ''
+  draft.bugId = ''
+  draft.estimateHours = ''
 }
 
 function openCreateModal() {
@@ -548,169 +776,92 @@ function closeCreateModal() {
   isCreateModalOpen.value = false
 }
 
-function badgeClass(status: string) {
-  const map: Record<string, string> = {
-    Backlog: 'badge-neutral',
-    Planned: 'badge-info',
-    'In Progress': 'badge-primary',
-    Blocked: 'badge-warning',
-    Done: 'badge-success',
-    Cancelled: 'badge-error',
-    Open: 'badge-warning',
-    Resolved: 'badge-success',
-    Verified: 'badge-info',
-    Closed: 'badge-success',
-    Todo: 'badge-neutral',
-    Review: 'badge-info',
+async function createItem() {
+  if (!draft.title.trim()) return
+
+  try {
+    if (activeTab.value === 'features') {
+      await $fetch('/api/features', {
+        method: 'POST',
+        body: {
+          projectId,
+          title: draft.title.trim(),
+          description: draft.description.trim() || undefined,
+          priority: draft.priority,
+          status: draft.status,
+          businessValue: draft.businessValue || undefined,
+          targetRelease: draft.targetRelease || undefined,
+          assigneeIds: draft.assigneeIds.length ? draft.assigneeIds : undefined,
+        },
+      })
+      refreshFeatures()
+    } else if (activeTab.value === 'bugs') {
+      await $fetch('/api/bugs', {
+        method: 'POST',
+        body: {
+          projectId,
+          title: draft.title.trim(),
+          description: draft.description.trim() || undefined,
+          severity: draft.severity,
+          priority: draft.priority,
+          status: draft.status,
+          featureId: draft.featureId || undefined,
+          dueDate: draft.dueDate || undefined,
+          assigneeIds: draft.assigneeIds.length ? draft.assigneeIds : undefined,
+        },
+      })
+      refreshBugs()
+    } else {
+      await $fetch('/api/tasks', {
+        method: 'POST',
+        body: {
+          projectId,
+          title: draft.title.trim(),
+          description: draft.description.trim() || undefined,
+          status: draft.status,
+          priority: draft.priority,
+          featureId: draft.featureId || undefined,
+          bugId: draft.bugId || undefined,
+          estimateHours: draft.estimateHours ? Number(draft.estimateHours) : undefined,
+          dueDate: draft.dueDate || undefined,
+          assigneeIds: draft.assigneeIds.length ? draft.assigneeIds : undefined,
+        },
+      })
+      refreshTasks()
+    }
+    closeCreateModal()
+  } catch (e: any) {
+    console.error('Failed to create item:', e)
   }
-  return map[status] || 'badge-neutral'
 }
 
-function nextId(prefix: string, items: Item[]) {
-  const maxValue = items.reduce((max, item) => Math.max(max, Number(item.id.replace(/\D+/g, '')) || 0), 0)
-  return `${prefix}-${maxValue + 1}`
-}
-
-function createItem() {
-  const due = draft.due || '2026-03-21'
-  const note = draft.note.trim() || 'New workspace item created from quick-create flow.'
-
-  if (activeTab.value === 'features') {
-    const newFeature = {
-      id: nextId('FE', records.features),
-      title: draft.title.trim(),
-      note,
-      status: draft.status,
-      statusClass: badgeClass(draft.status),
-      priority: draft.priority,
-      assignee: draft.assignee,
-      due,
-      linkedTasks: 0,
-      linkedBugs: 0,
-      businessValue: draft.businessValue,
-      targetRelease: draft.targetRelease || 'TBD',
-      kind: 'Feature',
-    }
-
-    records.features.unshift(newFeature)
-    appendAuditEntry({
-      actorUserId: `${project.owner.toLowerCase()}@signaltribe.dev`,
-      module: 'projects',
-      project: project.name,
-      entityType: 'feature',
-      entityId: newFeature.id,
-      action: 'record created',
-      summary: `Feature ${newFeature.title} created in ${project.name}.`,
-      severity: newFeature.priority === 'Critical' ? 'critical' : 'info',
-      beforeJson: null,
-      afterJson: {
-        status: newFeature.status,
-        priority: newFeature.priority,
-        assignee: newFeature.assignee,
-        due: newFeature.due,
-      },
-    })
-  } else if (activeTab.value === 'bugs') {
-    const newBug = {
-      id: nextId('BG', records.bugs),
-      title: draft.title.trim(),
-      note,
-      status: draft.status,
-      statusClass: badgeClass(draft.status),
-      priority: draft.priority,
-      assignee: draft.assignee,
-      due,
-      severity: draft.severity,
-      relatedFeature: draft.relatedFeature,
-      linkedTasks: draft.relatedFeature ? 1 : 0,
-      kind: 'Bug',
-    }
-
-    records.bugs.unshift(newBug)
-    appendAuditEntry({
-      actorUserId: `${project.owner.toLowerCase()}@signaltribe.dev`,
-      module: 'projects',
-      project: project.name,
-      entityType: 'bug',
-      entityId: newBug.id,
-      action: 'record created',
-      summary: `Bug ${newBug.title} created in ${project.name}.`,
-      severity: newBug.severity === 'Critical' || newBug.priority === 'Critical' ? 'critical' : 'warning',
-      beforeJson: null,
-      afterJson: {
-        status: newBug.status,
-        priority: newBug.priority,
-        severity: newBug.severity,
-        relatedFeature: newBug.relatedFeature,
-      },
-    })
-  } else {
-    const newTask = {
-      id: nextId('TS', records.tasks),
-      title: draft.title.trim(),
-      note,
-      status: draft.status,
-      statusClass: badgeClass(draft.status),
-      priority: draft.priority,
-      assignee: draft.assignee,
-      due,
-      relatedFeature: draft.relatedFeature,
-      relatedBug: draft.relatedBug,
-      estimate: draft.estimate || 'TBD',
-      kind: 'Task',
-    }
-
-    records.tasks.unshift(newTask)
-    appendAuditEntry({
-      actorUserId: `${project.owner.toLowerCase()}@signaltribe.dev`,
-      module: 'projects',
-      project: project.name,
-      entityType: 'task',
-      entityId: newTask.id,
-      action: 'record created',
-      summary: `Task ${newTask.title} created in ${project.name}.`,
-      severity: newTask.priority === 'Critical' || isOverdue(newTask.due) ? 'warning' : 'info',
-      beforeJson: null,
-      afterJson: {
-        status: newTask.status,
-        priority: newTask.priority,
-        relatedFeature: newTask.relatedFeature,
-        relatedBug: newTask.relatedBug,
-        estimate: newTask.estimate,
-      },
-    })
-  }
-
-  closeCreateModal()
-}
-
-function isOverdue(value: string) {
+function isOverdue(value: string | null) {
   if (!value) return false
   const date = new Date(value)
   return !Number.isNaN(date.getTime()) && date < today
 }
 
-function isAttention(item: Item) {
-  return item.status === 'Blocked' || item.priority === 'Critical' || item.severity === 'Critical' || (isOverdue(item.due) && !['Done', 'Closed', 'Resolved', 'Verified', 'Cancelled'].includes(item.status))
+function isAttention(item: any) {
+  return item.status === 'blocked' || item.priority === 'critical' || item.severity === 'critical' || (isOverdue(item.dueDate) && !['done', 'closed', 'resolved', 'verified', 'cancelled'].includes(item.status))
 }
 
-function formatDue(value: string) {
-  if (!value) return '-'
+function formatDue(value: string | null) {
+  if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function relationshipValue(item: Item) {
-  if (activeTab.value === 'features') return `${item.linkedTasks || 0} tasks - ${item.linkedBugs || 0} bugs`
-  if (activeTab.value === 'bugs') return item.relatedFeature || 'No linked feature'
-  return [item.relatedFeature, item.relatedBug].filter(Boolean).join(' - ') || 'Standalone task'
+function relationshipValue(item: any) {
+  if (activeTab.value === 'features') return `${item.businessValue || '—'}`
+  if (activeTab.value === 'bugs') return item.featureId ? 'Linked to feature' : 'No linked feature'
+  return [item.featureId ? 'Feature linked' : '', item.bugId ? 'Bug linked' : ''].filter(Boolean).join(' • ') || 'Standalone task'
 }
 
-function relationshipMeta(item: Item) {
-  if (activeTab.value === 'features') return `${item.businessValue || 'Business value TBD'} - ${item.targetRelease || 'No release target'}`
-  if (activeTab.value === 'bugs') return `${item.severity || 'Severity TBD'} severity - ${item.linkedTasks || 0} linked tasks`
-  return item.estimate ? `${item.estimate} estimate` : ''
+function relationshipMeta(item: any) {
+  if (activeTab.value === 'features') return item.targetRelease || ''
+  if (activeTab.value === 'bugs') return `${item.severity || '—'} severity`
+  return item.estimateHours ? `${item.estimateHours}h estimate` : ''
 }
 </script>
 

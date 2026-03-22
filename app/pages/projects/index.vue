@@ -23,18 +23,18 @@
       <div class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm md:stats-horizontal">
         <div class="stat">
           <div class="stat-title">Portfolio Total</div>
-          <div class="stat-value text-primary">18</div>
-          <div class="stat-desc">14 active, 3 planning, 1 archived</div>
+          <div class="stat-value text-primary">{{ projects?.length ?? 0 }}</div>
+          <div class="stat-desc">From live database</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Legal Workspaces</div>
-          <div class="stat-value text-secondary">12</div>
-          <div class="stat-desc">4 pending approval</div>
+          <div class="stat-title">Active</div>
+          <div class="stat-value text-secondary">{{ projects?.filter((p: any) => p.status === 'active').length ?? 0 }}</div>
+          <div class="stat-desc">Currently in progress</div>
         </div>
         <div class="stat">
-          <div class="stat-title">Tracked Licenses</div>
-          <div class="stat-value text-info">47</div>
-          <div class="stat-desc">6 renewals this month</div>
+          <div class="stat-title">Planning</div>
+          <div class="stat-value text-info">{{ projects?.filter((p: any) => p.status === 'planning').length ?? 0 }}</div>
+          <div class="stat-desc">Not yet started</div>
         </div>
       </div>
     </section>
@@ -50,14 +50,14 @@
           <div class="flex flex-col gap-2 sm:flex-row">
             <label class="input input-bordered input-sm flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4 opacity-60"><path fill-rule="evenodd" d="M10.5 3a7.5 7.5 0 1 0 4.673 13.37l4.228 4.227a.75.75 0 1 0 1.06-1.06l-4.227-4.228A7.5 7.5 0 0 0 10.5 3Zm-6 7.5a6 6 0 1 1 12 0 6 6 0 0 1-12 0Z" clip-rule="evenodd" /></svg>
-              <input type="text" class="grow" placeholder="Search project or client" />
+              <input v-model="searchQuery" type="text" class="grow" placeholder="Search project or client" />
             </label>
-            <select class="select select-bordered select-sm w-full sm:w-44">
-              <option>All statuses</option>
-              <option>Active</option>
-              <option>Planning</option>
-              <option>At Risk</option>
-              <option>Completed</option>
+            <select v-model="statusFilter" class="select select-bordered select-sm w-full sm:w-44">
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="planning">Planning</option>
+              <option value="at_risk">At Risk</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
         </div>
@@ -70,28 +70,27 @@
                 <th>Project</th>
                 <th>Status</th>
                 <th>Deadline</th>
-                <th>Legal</th>
-                <th>Licenses</th>
+                <th>Client</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="project in projects" :key="project.id">
+              <tr v-for="project in filteredProjects" :key="project.id">
                 <td class="font-mono text-xs text-base-content/60">{{ project.code }}</td>
                 <td>
                   <NuxtLink :to="`/projects/${project.id}`" class="font-medium text-primary hover:underline">
                     {{ project.name }}
                   </NuxtLink>
-                  <div class="text-xs text-base-content/50">{{ project.client }}</div>
+                  <div class="text-xs text-base-content/50">{{ project.clientName }}</div>
                 </td>
                 <td>
-                  <span class="badge badge-outline" :class="project.statusClass">{{ project.status }}</span>
+                  <span class="badge badge-outline" :class="statusClass(project.status)">{{ project.status }}</span>
                 </td>
-                <td class="text-sm text-base-content/75">{{ project.deadline }}</td>
-                <td class="text-sm text-base-content/75">{{ project.legal }}</td>
-                <td class="text-sm text-base-content/75">{{ project.licenses }}</td>
-                <td>
+                <td class="text-sm text-base-content/75">{{ project.deadline ? project.deadline.slice(0, 10) : '—' }}</td>
+                <td class="text-sm text-base-content/75">{{ project.clientName || '—' }}</td>
+                <td class="flex gap-1">
                   <NuxtLink :to="`/projects/${project.id}`" class="btn btn-ghost btn-xs">Open</NuxtLink>
+                  <button class="btn btn-ghost btn-xs" @click="openEditModal(project)">Edit</button>
                 </td>
               </tr>
             </tbody>
@@ -100,7 +99,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isCreateProjectModalOpen"
       title="Create project"
       kicker="Portfolio"
@@ -118,30 +117,26 @@
         </label>
         <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
           <span class="text-sm font-medium text-base-content">Client</span>
-          <input v-model="draft.client" type="text" class="input input-bordered w-full" placeholder="Client or company" />
+          <input v-model="draft.clientName" type="text" class="input input-bordered w-full" placeholder="Client or company" />
         </label>
         <div class="grid gap-4 md:grid-cols-2">
           <label class="grid gap-2">
             <span class="text-sm font-medium text-base-content">Status</span>
             <select v-model="draft.status" class="select select-bordered w-full">
-              <option>Active</option>
-              <option>Planning</option>
-              <option>At Risk</option>
-              <option>Completed</option>
+              <option value="active">Active</option>
+              <option value="planning">Planning</option>
+              <option value="at_risk">At Risk</option>
+              <option value="completed">Completed</option>
             </select>
           </label>
           <label class="grid gap-2">
             <span class="text-sm font-medium text-base-content">Deadline</span>
-            <input v-model="draft.deadline" type="text" class="input input-bordered w-full" placeholder="24 Oct 2026" />
+            <input v-model="draft.deadline" type="date" class="input input-bordered w-full" />
           </label>
         </div>
         <label class="grid gap-2">
-          <span class="text-sm font-medium text-base-content">Legal status</span>
-          <input v-model="draft.legal" type="text" class="input input-bordered w-full" placeholder="Agreement pending signature" />
-        </label>
-        <label class="grid gap-2">
-          <span class="text-sm font-medium text-base-content">License status</span>
-          <input v-model="draft.licenses" type="text" class="input input-bordered w-full" placeholder="No subscriptions yet" />
+          <span class="text-sm font-medium text-base-content">Notes</span>
+          <textarea v-model="draft.notes" class="textarea textarea-bordered w-full" placeholder="Optional notes" />
         </label>
       </fieldset>
 
@@ -149,59 +144,84 @@
         <button type="button" class="btn btn-ghost" @click="closeCreateProjectModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="createProject">Save project</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
+    <UiWorkspaceModal
+      :open="isEditProjectModalOpen"
+      title="Edit project"
+      kicker="Portfolio"
+      description="Update project details. The project code cannot be changed after creation."
+      @close="closeEditProjectModal"
+    >
+      <fieldset class="fieldset gap-4">
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Project code</span>
+          <input :value="editDraft.code" type="text" class="input input-bordered w-full" disabled />
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Project name</span>
+          <input v-model="editDraft.name" type="text" class="input input-bordered w-full" placeholder="Project name" />
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Client</span>
+          <input v-model="editDraft.clientName" type="text" class="input input-bordered w-full" placeholder="Client or company" />
+        </label>
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Status</span>
+            <select v-model="editDraft.status" class="select select-bordered w-full">
+              <option value="active">Active</option>
+              <option value="planning">Planning</option>
+              <option value="on-hold">On Hold</option>
+              <option value="at_risk">At Risk</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Deadline</span>
+            <input v-model="editDraft.deadline" type="date" class="input input-bordered w-full" />
+          </label>
+        </div>
+        <label class="grid gap-2">
+          <span class="text-sm font-medium text-base-content">Notes</span>
+          <textarea v-model="editDraft.notes" class="textarea textarea-bordered w-full" placeholder="Optional notes" />
+        </label>
+      </fieldset>
+
+      <template #actions>
+        <button type="button" class="btn btn-ghost" @click="closeEditProjectModal">Cancel</button>
+        <button type="button" class="btn btn-primary" @click="saveEditProject">Save changes</button>
+      </template>
+    </UiWorkspaceModal>
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
 
-const projects = reactive([
-  {
-    id: 101,
-    code: 'PRJ-101',
-    name: 'SignalTribe Platform',
-    client: 'TradeCorp Asia',
-    status: 'Active',
-    statusClass: 'badge-success',
-    deadline: '24 Oct 2026',
-    legal: 'Agreement pending signature',
-    licenses: '2 renewals due',
-  },
-  {
-    id: 102,
-    code: 'PRJ-102',
-    name: 'OpsDesk CRM',
-    client: 'Northwind Systems',
-    status: 'Planning',
-    statusClass: 'badge-neutral',
-    deadline: '14 Nov 2026',
-    legal: 'Proposal in draft',
-    licenses: 'Not started',
-  },
-  {
-    id: 103,
-    code: 'PRJ-103',
-    name: 'FleetOps Internal Tools',
-    client: 'Atlas Mobility',
-    status: 'At Risk',
-    statusClass: 'badge-warning',
-    deadline: '05 Sep 2026',
-    legal: 'Change order review',
-    licenses: '1 expired token',
-  },
-  {
-    id: 104,
-    code: 'PRJ-104',
-    name: 'Clinic Portal Suite',
-    client: 'MediCore Group',
-    status: 'Active',
-    statusClass: 'badge-success',
-    deadline: '19 Dec 2026',
-    legal: 'All approved',
-    licenses: 'SSL renewal in 18 days',
-  },
-])
+const searchQuery = ref('')
+const statusFilter = ref('')
+
+const { data: projects, refresh } = await useFetch('/api/projects')
+
+const filteredProjects = computed(() => {
+  let list = projects.value ?? []
+  if (statusFilter.value) {
+    list = list.filter((p: any) => p.status === statusFilter.value)
+  }
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter((p: any) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || (p.clientName ?? '').toLowerCase().includes(q))
+  }
+  return list
+})
+
+function statusClass(status: string) {
+  if (status === 'active') return 'badge-success'
+  if (status === 'at_risk') return 'badge-warning'
+  if (status === 'completed') return 'badge-info'
+  return 'badge-neutral'
+}
 
 const isCreateProjectModalOpen = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -209,43 +229,97 @@ const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const draft = reactive({
   code: '',
   name: '',
-  client: '',
-  status: 'Planning',
+  clientName: '',
+  status: 'planning',
   deadline: '',
-  legal: 'Proposal in draft',
-  licenses: 'Not started',
+  notes: '',
 })
 
 function closeCreateProjectModal() {
   isCreateProjectModalOpen.value = false
 }
 
-function createProject() {
-  if (!draft.code.trim() || !draft.name.trim() || !draft.client.trim() || !draft.deadline.trim()) {
-    message.value = { type: 'error', text: 'Project code, name, client, and deadline are required.' }
+async function createProject() {
+  if (!draft.code.trim() || !draft.name.trim()) {
+    message.value = { type: 'error', text: 'Project code and name are required.' }
     return
   }
 
-  projects.unshift({
-    id: Date.now(),
-    code: draft.code.trim(),
-    name: draft.name.trim(),
-    client: draft.client.trim(),
-    status: draft.status,
-    statusClass: draft.status === 'Active' ? 'badge-success' : draft.status === 'At Risk' ? 'badge-warning' : 'badge-neutral',
-    deadline: draft.deadline.trim(),
-    legal: draft.legal.trim() || 'Proposal in draft',
-    licenses: draft.licenses.trim() || 'Not started',
-  })
+  try {
+    await $fetch('/api/projects', {
+      method: 'POST',
+      body: {
+        code: draft.code.trim(),
+        name: draft.name.trim(),
+        clientName: draft.clientName.trim() || undefined,
+        status: draft.status,
+        deadline: draft.deadline || undefined,
+        notes: draft.notes.trim() || undefined,
+      },
+    })
+    message.value = { type: 'success', text: `${draft.name.trim()} saved to the project portfolio.` }
+    draft.code = ''
+    draft.name = ''
+    draft.clientName = ''
+    draft.status = 'planning'
+    draft.deadline = ''
+    draft.notes = ''
+    closeCreateProjectModal()
+    refresh()
+  } catch (e: any) {
+    message.value = { type: 'error', text: e?.data?.message || 'Failed to create project.' }
+  }
+}
 
-  message.value = { type: 'success', text: `${draft.name.trim()} saved to the project portfolio.` }
-  draft.code = ''
-  draft.name = ''
-  draft.client = ''
-  draft.status = 'Planning'
-  draft.deadline = ''
-  draft.legal = 'Proposal in draft'
-  draft.licenses = 'Not started'
-  closeCreateProjectModal()
+const isEditProjectModalOpen = ref(false)
+const editingProjectId = ref('')
+
+const editDraft = reactive({
+  code: '',
+  name: '',
+  clientName: '',
+  status: 'planning',
+  deadline: '',
+  notes: '',
+})
+
+function openEditModal(project: any) {
+  editingProjectId.value = project.id
+  editDraft.code = project.code
+  editDraft.name = project.name
+  editDraft.clientName = project.clientName || ''
+  editDraft.status = project.status || 'planning'
+  editDraft.deadline = project.deadline ? project.deadline.slice(0, 10) : ''
+  editDraft.notes = project.notes || ''
+  isEditProjectModalOpen.value = true
+}
+
+function closeEditProjectModal() {
+  isEditProjectModalOpen.value = false
+}
+
+async function saveEditProject() {
+  if (!editDraft.name.trim()) {
+    message.value = { type: 'error', text: 'Project name is required.' }
+    return
+  }
+
+  try {
+    await $fetch(`/api/projects/${editingProjectId.value}`, {
+      method: 'PATCH',
+      body: {
+        name: editDraft.name.trim(),
+        clientName: editDraft.clientName.trim() || undefined,
+        status: editDraft.status,
+        deadline: editDraft.deadline || undefined,
+        notes: editDraft.notes.trim() || undefined,
+      },
+    })
+    message.value = { type: 'success', text: `${editDraft.name.trim()} updated.` }
+    closeEditProjectModal()
+    refresh()
+  } catch (e: any) {
+    message.value = { type: 'error', text: e?.data?.message || 'Failed to update project.' }
+  }
 }
 </script>

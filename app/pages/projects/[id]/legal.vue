@@ -461,7 +461,7 @@
     </div>
 
     <!-- Modals -->
-    <WorkspaceModal :open="activeModal === 'deliverable'" title="Tambah Deliverable" kicker="Proposal" @close="closeModal">
+    <UiWorkspaceModal :open="activeModal === 'deliverable'" title="Tambah Deliverable" kicker="Proposal" @close="closeModal">
       <div class="form-control w-full">
         <label class="label"><span class="label-text font-medium">Nama Deliverable</span></label>
         <input type="text" v-model="modalDraft.deliverable" class="input input-bordered w-full" placeholder="e.g. Source code aplikasi web..." />
@@ -470,9 +470,9 @@
         <button type="button" class="btn btn-ghost" @click="closeModal">Batal</button>
         <button type="button" class="btn btn-primary" :disabled="!modalDraft.deliverable.trim()" @click="saveDeliverable">Simpan</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
 
-    <WorkspaceModal :open="activeModal === 'penawaranItem'" title="Tambah Item Penawaran" kicker="Penawaran" @close="closeModal">
+    <UiWorkspaceModal :open="activeModal === 'penawaranItem'" title="Tambah Item Penawaran" kicker="Penawaran" @close="closeModal">
       <div class="grid gap-4">
         <div class="form-control w-full">
           <label class="label"><span class="label-text font-medium">Deskripsi Item</span></label>
@@ -487,9 +487,9 @@
         <button type="button" class="btn btn-ghost" @click="closeModal">Batal</button>
         <button type="button" class="btn btn-primary" :disabled="!modalDraft.itemDesc.trim()" @click="savePenawaranItem">Simpan</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
 
-    <WorkspaceModal :open="activeModal === 'clause'" title="Tambah Pasal Perjanjian" kicker="Agreement" @close="closeModal">
+    <UiWorkspaceModal :open="activeModal === 'clause'" title="Tambah Pasal Perjanjian" kicker="Agreement" @close="closeModal">
       <div class="grid gap-4">
         <div class="form-control w-full">
           <label class="label"><span class="label-text font-medium">Judul Pasal</span></label>
@@ -504,7 +504,7 @@
         <button type="button" class="btn btn-ghost" @click="closeModal">Batal</button>
         <button type="button" class="btn btn-primary" :disabled="!modalDraft.clauseTitle.trim()" @click="saveClause">Simpan</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -525,28 +525,23 @@ import {
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
-const projectId = String(route.params.id || '101')
+const projectId = String(route.params.id || '')
 
-const projectMap = {
-  '101': {
-    id: '101',
-    code: 'PRJ-101',
-    name: 'SignalTribe Platform',
-    clientName: 'TradeCorp Asia',
-  },
-  '102': {
-    id: '102',
-    code: 'PRJ-102',
-    name: 'OpsDesk CRM',
-    clientName: 'Northwind Systems',
-  },
-}
+const { data: projectData } = await useFetch(`/api/projects/${projectId}`)
 
-const currentProject = computed(() => projectMap[projectId] || {
-  id: projectId,
-  code: `PRJ-${projectId}`,
-  name: `Project ${projectId}`,
-  clientName: 'Client account',
+const currentProject = computed(() => {
+  const p = projectData.value
+  return p ? {
+    id: p.id,
+    code: p.code || `PRJ-${p.id.slice(0, 4)}`,
+    name: p.name,
+    clientName: p.clientName || 'Client account',
+  } : {
+    id: projectId,
+    code: `PRJ-${projectId.slice(0, 4)}`,
+    name: `Project ${projectId.slice(0, 8)}`,
+    clientName: 'Client account',
+  }
 })
 
 const tabs = [
@@ -729,57 +724,52 @@ const docs = reactive({
   },
 })
 
-// Load saved data from settings
-const { data: savedDocs } = await useAsyncData('legalDocs', () => $fetch('/api/settings'))
-if (savedDocs.value?.legalDocuments) {
+const docIds = reactive({
+  proposal: null,
+  penawaran: null,
+  agreement: null,
+})
+
+const loadFromDB = async () => {
   try {
-    const parsed = JSON.parse(savedDocs.value.legalDocuments)
-    if (parsed.proposal) {
-      const normalizedProposal = { ...parsed.proposal }
+    const documents = await $fetch(`/api/legal/documents?projectId=${projectId}`)
+    for (const doc of documents) {
+      const key = doc.documentType === 'quotation' ? 'penawaran' : doc.documentType
+      if (!['proposal', 'penawaran', 'agreement'].includes(key)) continue
+      docIds[key] = doc.id
 
-      if (!normalizedProposal.projectName || normalizedProposal.projectName === legacyProposalDefaults.projectName) {
-        normalizedProposal.projectName = professionalProposalDefaults.projectName
+      const full = await $fetch(`/api/legal/documents/${doc.id}`)
+      const latestVersion = full.versions?.[0]
+      if (!latestVersion?.payloadJson) continue
+
+      const payload = latestVersion.payloadJson
+      if (key === 'proposal') {
+        Object.assign(docs.proposal, payload)
+        if (Array.isArray(payload.deliverables)) docs.proposal.deliverables = payload.deliverables
+      } else if (key === 'penawaran') {
+        Object.assign(docs.penawaran, payload)
+        if (Array.isArray(payload.items)) docs.penawaran.items = payload.items
+      } else if (key === 'agreement') {
+        const { partyOne, partyTwo, clauses, ...rest } = payload
+        Object.assign(docs.agreement, rest)
+        if (partyOne) Object.assign(docs.agreement.partyOne, partyOne)
+        if (partyTwo) Object.assign(docs.agreement.partyTwo, partyTwo)
+        if (Array.isArray(clauses)) docs.agreement.clauses = clauses
       }
-
-      if (!normalizedProposal.summary || normalizedProposal.summary === legacyProposalDefaults.summary) {
-        normalizedProposal.summary = professionalProposalDefaults.summary
-      }
-
-      if (!normalizedProposal.scope || normalizedProposal.scope === legacyProposalDefaults.scope) {
-        normalizedProposal.scope = professionalProposalDefaults.scope
-      }
-
-      if (!normalizedProposal.timeline || normalizedProposal.timeline === legacyProposalDefaults.timeline) {
-        normalizedProposal.timeline = professionalProposalDefaults.timeline
-      }
-
-      if (!Array.isArray(normalizedProposal.deliverables) || hasSameItems(normalizedProposal.deliverables, legacyProposalDefaults.deliverables)) {
-        normalizedProposal.deliverables = [...professionalProposalDefaults.deliverables]
-      }
-
-      if (!normalizedProposal.version || normalizedProposal.version === '1.0') {
-        normalizedProposal.version = '1.1'
-      }
-
-      Object.assign(docs.proposal, normalizedProposal)
     }
-    Object.assign(docs.penawaran, parsed.penawaran || {})
-    if (parsed.agreement) {
-      Object.assign(docs.agreement, { ...docs.agreement, ...parsed.agreement })
-      if (parsed.agreement.partyOne) Object.assign(docs.agreement.partyOne, parsed.agreement.partyOne)
-      if (parsed.agreement.partyTwo) Object.assign(docs.agreement.partyTwo, parsed.agreement.partyTwo)
-      if (parsed.agreement.clauses) docs.agreement.clauses = parsed.agreement.clauses
-    }
-  } catch {}
+  } catch (e) {
+    console.error('Failed to load legal documents:', e)
+  }
 }
+
+onMounted(() => { loadFromDB() })
 
 const totalPenawaran = computed(() =>
-  docs.penawaran.items.reduce((sum, item) => sum + (Number(item.price) || 0), 0)
+  docs.penawaran.items.reduce((sum, item) => sum + (Number(item.price) || 0), 0),
 )
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value || 0)
-}
+const formatCurrency = (value) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0)
 
 const statusBadge = (status) => {
   const map = {
@@ -1060,18 +1050,41 @@ const saveDocuments = async () => {
   alertMessage.value = ''
   try {
     docs.proposal.lastUpdated = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-    await $fetch('/api/settings', {
-      method: 'PUT',
-      body: {
-        legalDocuments: JSON.stringify({
-          proposal: docs.proposal,
-          penawaran: docs.penawaran,
-          agreement: docs.agreement,
-        }),
-      },
-    })
+
+    const entries = [
+      { key: 'proposal', docType: 'proposal', title: docs.proposal.projectName || currentProject.value.name, clientName: docs.proposal.clientName },
+      { key: 'penawaran', docType: 'quotation', title: docs.penawaran.number || 'Surat Penawaran', clientName: docs.penawaran.clientName },
+      { key: 'agreement', docType: 'agreement', title: docs.agreement.number || 'Perjanjian Kerjasama', clientName: docs.agreement.partyTwo.name },
+    ]
+
+    for (const entry of entries) {
+      if (!docIds[entry.key]) {
+        const created = await $fetch('/api/legal/documents', {
+          method: 'POST',
+          body: { projectId, documentType: entry.docType, title: entry.title, clientName: entry.clientName || undefined },
+        })
+        docIds[entry.key] = created.id
+      }
+
+      const payload = entry.key === 'proposal'
+        ? { ...docs.proposal, deliverables: [...docs.proposal.deliverables] }
+        : entry.key === 'penawaran'
+          ? { ...docs.penawaran, items: docs.penawaran.items.map(i => ({ ...i })) }
+          : {
+              ...docs.agreement,
+              partyOne: { ...docs.agreement.partyOne },
+              partyTwo: { ...docs.agreement.partyTwo },
+              clauses: docs.agreement.clauses.map(c => ({ ...c })),
+            }
+
+      await $fetch(`/api/legal/documents/${docIds[entry.key]}/versions`, {
+        method: 'POST',
+        body: { documentId: docIds[entry.key], payloadJson: payload },
+      })
+    }
+
     alertType.value = 'success'
-    alertMessage.value = 'Dokumen berhasil disimpan!'
+    alertMessage.value = 'Dokumen berhasil disimpan ke database!'
   } catch {
     alertType.value = 'error'
     alertMessage.value = 'Gagal menyimpan dokumen. Silakan coba lagi.'

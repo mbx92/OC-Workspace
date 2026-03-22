@@ -49,25 +49,14 @@
               <input v-model="filters.query" type="text" class="grow" :placeholder="t('audit.search')" />
             </label>
 
-            <select v-model="filters.module" class="select select-bordered select-sm w-full lg:w-36">
+            <select v-model="filters.entityType" class="select select-bordered select-sm w-full lg:w-36">
               <option value="">{{ t('common.allModules') }}</option>
-              <option value="finance">{{ t('sidebar.finance') }}</option>
-              <option value="team">{{ t('sidebar.team') }}</option>
-              <option value="legal">{{ t('sidebar.legal') }}</option>
-              <option value="integrations">{{ t('sidebar.integrations') }}</option>
-              <option value="projects">{{ t('sidebar.projects') }}</option>
-            </select>
-
-            <select v-model="filters.severity" class="select select-bordered select-sm w-full lg:w-36">
-              <option value="">{{ t('common.allSeverity') }}</option>
-              <option value="info">{{ t('common.info') }}</option>
-              <option value="warning">{{ t('common.warning') }}</option>
-              <option value="critical">{{ t('common.critical') }}</option>
+              <option v-for="et in entityTypeOptions" :key="et" :value="et">{{ et }}</option>
             </select>
 
             <select v-model="filters.project" class="select select-bordered select-sm w-full lg:w-48">
               <option value="">{{ t('common.allProjects') }}</option>
-              <option v-for="project in projectOptions" :key="project" :value="project">{{ project }}</option>
+              <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
 
             <input v-model="filters.dateFrom" type="date" class="input input-bordered input-sm w-full lg:w-40" />
@@ -79,9 +68,8 @@
                 <tr>
                   <th>{{ t('audit.timestamp') }}</th>
                   <th>{{ t('common.actions') }}</th>
-                  <th>Module</th>
+                  <th>Entity Type</th>
                   <th>{{ t('common.project') }}</th>
-                  <th>{{ t('audit.actor') }}</th>
                   <th>{{ t('audit.snapshots') }}</th>
                   <th>{{ t('audit.context') }}</th>
                 </tr>
@@ -89,20 +77,18 @@
               <tbody>
                 <tr v-for="entry in filteredEntries" :key="entry.id">
                   <td>
-                    <div class="font-medium text-base-content">{{ entry.createdAt }}</div>
-                    <div class="text-xs text-base-content/45">{{ entry.id }}</div>
+                    <div class="font-medium text-base-content">{{ entry.createdAt?.slice(0, 16) }}</div>
+                    <div class="text-xs text-base-content/45">{{ entry.id?.slice(0, 8) }}</div>
                   </td>
                   <td>
                     <div class="font-medium text-base-content">{{ entry.action }}</div>
-                    <div class="mt-1 text-xs text-base-content/55">{{ entry.summary }}</div>
-                    <span class="mt-2 badge badge-outline" :class="severityBadgeClass(entry.severity)">{{ severityLabel(entry.severity) }}</span>
+                    <div class="mt-1 text-xs text-base-content/55">{{ entry.description }}</div>
                   </td>
                   <td>
-                    <span class="badge badge-outline" :class="moduleBadgeClass(entry.module)">{{ entry.module }}</span>
-                    <div class="mt-1 text-xs text-base-content/45">{{ entry.entityType }} / {{ entry.entityId }}</div>
+                    <span class="badge badge-outline" :class="moduleBadgeClass(entry.entityType)">{{ entry.entityType }}</span>
+                    <div class="mt-1 text-xs text-base-content/45">{{ entry.entityId?.slice(0, 8) }}</div>
                   </td>
-                  <td class="text-sm text-base-content/75">{{ entry.project }}</td>
-                  <td class="text-sm text-base-content/75">{{ entry.actorUserId }}</td>
+                  <td class="text-sm text-base-content/75">{{ projectMap[entry.projectId] || '—' }}</td>
                   <td class="min-w-72">
                     <div class="space-y-2 text-xs">
                       <div class="rounded-box bg-base-200/60 px-3 py-2">
@@ -123,7 +109,7 @@
                   </td>
                 </tr>
                 <tr v-if="!filteredEntries.length">
-                  <td colspan="7" class="py-10 text-center text-sm text-base-content/55">{{ t('audit.noEntries') }}</td>
+                  <td colspan="6" class="py-10 text-center text-sm text-base-content/55">{{ t('audit.noEntries') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -137,104 +123,85 @@
 <script setup lang="ts">
 import { IconHistory } from '@tabler/icons-vue'
 
-import { auditTrailEntries, type AuditEntry, type AuditModule, type AuditSeverity } from '~/data/audit'
-
 definePageMeta({ layout: 'default' })
 
 const { t } = useAppI18n()
 
+const { data: logsData } = await useFetch('/api/activity-logs')
+const { data: projectsData } = await useFetch('/api/projects')
+
+const logs = computed(() => logsData.value || [])
+
 const filters = reactive({
   query: '',
-  module: '',
-  severity: '',
+  entityType: '',
   project: '',
   dateFrom: '',
 })
 
-const sortedEntries = computed(() =>
-  [...auditTrailEntries].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
+const projectMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const p of (projectsData.value || []) as any[]) {
+    map[p.id] = p.name
+  }
+  return map
+})
+
+const projectOptions = computed(() => (projectsData.value || []).map((p: any) => ({ id: p.id, name: p.name })))
+
+const entityTypeOptions = computed(() =>
+  Array.from(new Set(logs.value.map((e: any) => e.entityType))).filter(Boolean).sort(),
 )
 
-const projectOptions = computed(() => Array.from(new Set(sortedEntries.value.map((entry) => entry.project))).sort())
-
 const filteredEntries = computed(() =>
-  sortedEntries.value.filter((entry) => {
+  logs.value.filter((entry: any) => {
     const query = filters.query.trim().toLowerCase()
     const matchesQuery = !query || [
       entry.action,
-      entry.summary,
-      entry.actorUserId,
-      entry.entityId,
+      entry.description,
       entry.entityType,
-      entry.project,
-    ].some((value) => value.toLowerCase().includes(query))
-    const matchesModule = !filters.module || entry.module === filters.module
-    const matchesSeverity = !filters.severity || entry.severity === filters.severity
-    const matchesProject = !filters.project || entry.project === filters.project
-    const matchesDate = !filters.dateFrom || entry.createdAt.slice(0, 10) >= filters.dateFrom
-    return matchesQuery && matchesModule && matchesSeverity && matchesProject && matchesDate
+      entry.entityId,
+      projectMap.value[entry.projectId] || '',
+    ].some((value: string) => value?.toLowerCase().includes(query))
+    const matchesEntityType = !filters.entityType || entry.entityType === filters.entityType
+    const matchesProject = !filters.project || entry.projectId === filters.project
+    const matchesDate = !filters.dateFrom || (entry.createdAt && entry.createdAt.slice(0, 10) >= filters.dateFrom)
+    return matchesQuery && matchesEntityType && matchesProject && matchesDate
   }),
 )
 
-const auditStats = computed(() => ({
-  total: sortedEntries.value.length,
-  today: sortedEntries.value.filter((entry) => entry.createdAt.startsWith('2026-03-21')).length,
-  critical: sortedEntries.value.filter((entry) => entry.severity === 'critical').length,
-  warning: sortedEntries.value.filter((entry) => entry.severity === 'warning').length,
-  finance: sortedEntries.value.filter((entry) => entry.module === 'finance').length,
-  commissionApprovals: sortedEntries.value.filter((entry) => entry.action === 'commission approved').length,
-  legalAndIntegrations: sortedEntries.value.filter((entry) => entry.module === 'legal' || entry.module === 'integrations').length,
-  integrationFailures: sortedEntries.value.filter((entry) => entry.action === 'integration sync failed').length,
-}))
-
-function severityBadgeClass(severity: AuditSeverity) {
+const auditStats = computed(() => {
+  const today = new Date().toISOString().slice(0, 10)
   return {
-    'badge-info': severity === 'info',
-    'badge-warning': severity === 'warning',
-    'badge-error': severity === 'critical',
+    total: logs.value.length,
+    today: logs.value.filter((e: any) => e.createdAt?.startsWith(today)).length,
+    critical: 0,
+    warning: 0,
+    finance: logs.value.filter((e: any) => e.entityType?.startsWith('budget') || e.entityType?.startsWith('commission')).length,
+    commissionApprovals: logs.value.filter((e: any) => e.entityType === 'commission' && e.action === 'approved').length,
+    legalAndIntegrations: logs.value.filter((e: any) => e.entityType?.startsWith('legal') || e.entityType?.startsWith('integration')).length,
+    integrationFailures: logs.value.filter((e: any) => e.entityType === 'integration_sync_job' && e.action === 'failed').length,
   }
+})
+
+function moduleBadgeClass(entityType: string) {
+  if (entityType?.startsWith('budget') || entityType?.startsWith('commission')) return 'badge-primary'
+  if (entityType?.startsWith('legal')) return 'badge-secondary'
+  if (entityType?.startsWith('integration')) return 'badge-info'
+  if (entityType?.startsWith('user')) return 'badge-success'
+  return 'badge-neutral'
 }
 
-function severityLabel(severity: AuditSeverity) {
-  return {
-    info: t('common.info'),
-    warning: t('common.warning'),
-    critical: t('common.critical'),
-  }[severity]
-}
-
-function moduleBadgeClass(module: AuditModule) {
-  return {
-    'badge-primary': module === 'finance',
-    'badge-secondary': module === 'legal',
-    'badge-info': module === 'integrations',
-    'badge-success': module === 'team',
-    'badge-neutral': module === 'projects',
-  }
-}
-
-function entryRoute(entry: AuditEntry) {
-  if (entry.module === 'finance') return '/finance'
-  if (entry.module === 'team') return '/team'
-  if (entry.module === 'projects') return '/projects'
-  if (entry.module === 'legal' && entry.entityType === 'legal-document') return `/legal/${entry.entityId}`
-  if (entry.module === 'integrations' && entry.entityType === 'integration-connection') return `/integrations/${entry.entityId}`
-  if (entry.module === 'integrations' && entry.entityType === 'integration-sync') {
-    const connectionId = extractConnectionId(entry)
-    return connectionId ? `/integrations/${connectionId}` : '/integrations'
-  }
+function entryRoute(entry: any) {
+  if (entry.entityType?.startsWith('budget') || entry.entityType?.startsWith('commission')) return '/finance'
+  if (entry.entityType?.startsWith('user')) return '/team'
+  if (entry.entityType === 'project') return `/projects/${entry.entityId}`
+  if (entry.entityType?.startsWith('legal_document')) return `/legal/${entry.entityId}`
+  if (entry.entityType?.startsWith('integration_connection')) return `/integrations/${entry.entityId}`
   return ''
 }
 
-function extractConnectionId(entry: AuditEntry) {
-  const afterConnectionId = entry.afterJson?.connectionId
-  if (typeof afterConnectionId === 'string') return afterConnectionId
-  const beforeConnectionId = entry.beforeJson?.connectionId
-  if (typeof beforeConnectionId === 'string') return beforeConnectionId
-  return ''
-}
-
-function formatSnapshot(snapshot: AuditEntry['beforeJson']) {
+function formatSnapshot(snapshot: any) {
   if (!snapshot || !Object.keys(snapshot).length) return t('audit.noSnapshot')
   return Object.entries(snapshot)
     .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
@@ -243,8 +210,7 @@ function formatSnapshot(snapshot: AuditEntry['beforeJson']) {
 
 function resetFilters() {
   filters.query = ''
-  filters.module = ''
-  filters.severity = ''
+  filters.entityType = ''
   filters.project = ''
   filters.dateFrom = ''
 }

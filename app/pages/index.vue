@@ -10,7 +10,7 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <button class="btn btn-ghost btn-sm">Refresh snapshot</button>
+        <button class="btn btn-ghost btn-sm" @click="refreshDashboard()">Refresh snapshot</button>
         <NuxtLink to="/projects" class="btn btn-primary btn-sm">Open projects</NuxtLink>
         <button class="btn btn-outline btn-sm" @click="isIntakeModalOpen = true">Create project intake</button>
       </div>
@@ -27,8 +27,8 @@
             <IconFolders class="h-8 w-8" />
           </div>
           <div class="stat-title">Active Projects</div>
-          <div class="stat-value text-primary">12</div>
-          <div class="stat-desc">3 are within 14 days of deadline</div>
+          <div class="stat-value text-primary">{{ stats.activeProjects }}</div>
+          <div class="stat-desc">From live database</div>
         </div>
 
         <div class="stat">
@@ -36,8 +36,8 @@
             <IconBug class="h-8 w-8" />
           </div>
           <div class="stat-title">Open Bugs</div>
-          <div class="stat-value text-warning">27</div>
-          <div class="stat-desc">5 critical bugs need owner attention</div>
+          <div class="stat-value text-warning">{{ stats.openBugs }}</div>
+          <div class="stat-desc">From live database</div>
         </div>
 
         <div class="stat">
@@ -45,8 +45,8 @@
             <IconScale class="h-8 w-8" />
           </div>
           <div class="stat-title">Pending Legal Docs</div>
-          <div class="stat-value text-secondary">9</div>
-          <div class="stat-desc">Proposal and agreement approvals pending</div>
+          <div class="stat-value text-secondary">{{ stats.pendingLegalDocs }}</div>
+          <div class="stat-desc">From live database</div>
         </div>
 
         <div class="stat">
@@ -54,8 +54,8 @@
             <IconCertificate class="h-8 w-8" />
           </div>
           <div class="stat-title">License Renewals</div>
-          <div class="stat-value text-info">6</div>
-          <div class="stat-desc">Renew within the next 30 days</div>
+          <div class="stat-value text-info">{{ stats.expiringLicenses }}</div>
+          <div class="stat-desc">From live database</div>
         </div>
       </div>
     </section>
@@ -83,19 +83,19 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="project in portfolioProjects" :key="project.id">
+                <tr v-for="project in recentProjects" :key="project.id">
                   <td>
                     <NuxtLink :to="`/projects/${project.id}`" class="font-medium text-primary hover:underline">
                       {{ project.name }}
                     </NuxtLink>
-                    <div class="text-xs text-base-content/50">{{ project.client }}</div>
+                    <div class="text-xs text-base-content/50">{{ project.clientName }}</div>
                   </td>
                   <td>
-                    <span class="badge badge-outline" :class="project.statusClass">{{ project.status }}</span>
+                    <span class="badge badge-outline" :class="statusClass(project.status)">{{ project.status }}</span>
                   </td>
-                  <td class="text-sm text-base-content/80">{{ project.delivery }}</td>
-                  <td class="text-sm text-base-content/80">{{ project.legal }}</td>
-                  <td class="text-sm text-base-content/80">{{ project.licenses }}</td>
+                  <td class="text-sm text-base-content/80">{{ project.description || '—' }}</td>
+                  <td class="text-sm text-base-content/80">—</td>
+                  <td class="text-sm text-base-content/80">—</td>
                 </tr>
               </tbody>
             </table>
@@ -150,7 +150,7 @@
       </div>
     </section>
 
-    <WorkspaceModal
+    <UiWorkspaceModal
       :open="isIntakeModalOpen"
       title="Create project intake"
       kicker="Dashboard"
@@ -160,20 +160,20 @@
       <div class="grid gap-3 md:grid-cols-2">
         <input v-model="intakeDraft.name" type="text" class="input input-bordered w-full md:col-span-2" placeholder="Project name" />
         <input v-model="intakeDraft.client" type="text" class="input input-bordered w-full" placeholder="Client" />
-        <input v-model="intakeDraft.owner" type="text" class="input input-bordered w-full" placeholder="Owner" />
         <select v-model="intakeDraft.status" class="select select-bordered w-full">
-          <option>Planning</option>
-          <option>Active</option>
-          <option>At Risk</option>
+          <option value="planning">Planning</option>
+          <option value="active">Active</option>
+          <option value="at_risk">At Risk</option>
         </select>
-        <input v-model="intakeDraft.deadline" type="text" class="input input-bordered w-full" placeholder="Expected deadline" />
+        <input v-model="intakeDraft.deadline" type="date" class="input input-bordered w-full" placeholder="Expected deadline" />
+        <textarea v-model="intakeDraft.description" class="textarea textarea-bordered w-full md:col-span-2" placeholder="Description (optional)" />
       </div>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="closeIntakeModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="createProjectIntake">Save intake</button>
       </template>
-    </WorkspaceModal>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -194,70 +194,54 @@ const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const intakeDraft = reactive({
   name: '',
   client: '',
-  owner: '',
-  status: 'Planning',
+  status: 'planning',
   deadline: '',
+  description: '',
 })
 
-const portfolioProjects = [
-  {
-    id: 101,
-    name: 'SignalTribe Platform',
-    client: 'TradeCorp Asia',
-    status: 'Active',
-    statusClass: 'badge-success',
-    delivery: '2 features blocked, 11 tasks in progress',
-    legal: 'Agreement awaiting signature',
-    licenses: '2 renewals due this month',
-  },
-  {
-    id: 102,
-    name: 'OpsDesk CRM',
-    client: 'Northwind Systems',
-    status: 'Planning',
-    statusClass: 'badge-neutral',
-    delivery: 'Proposal approved, scope finalization in progress',
-    legal: 'Proposal approved',
-    licenses: 'No active subscriptions yet',
-  },
-  {
-    id: 103,
-    name: 'FleetOps Internal Tools',
-    client: 'Atlas Mobility',
-    status: 'At Risk',
-    statusClass: 'badge-warning',
-    delivery: 'Critical API issue under investigation',
-    legal: 'Change order pending review',
-    licenses: '1 credential rotation overdue',
-  },
-  {
-    id: 104,
-    name: 'Clinic Portal Suite',
-    client: 'MediCore Group',
-    status: 'Active',
-    statusClass: 'badge-success',
-    delivery: 'UAT in progress for release 2',
-    legal: 'All docs approved',
-    licenses: 'Annual SSL renewal in 18 days',
-  },
-]
+const { data: dashboard, refresh: refreshDashboard } = await useFetch('/api/dashboard')
+
+const stats = computed(() => dashboard.value?.stats ?? { activeProjects: 0, openBugs: 0, pendingLegalDocs: 0, expiringLicenses: 0 })
+const recentProjects = computed(() => dashboard.value?.recentProjects ?? [])
+
+function statusClass(status: string) {
+  if (status === 'active') return 'badge-success'
+  if (status === 'at_risk') return 'badge-warning'
+  if (status === 'completed') return 'badge-info'
+  return 'badge-neutral'
+}
 
 function closeIntakeModal() {
   isIntakeModalOpen.value = false
 }
 
-function createProjectIntake() {
-  if (!intakeDraft.name.trim() || !intakeDraft.client.trim() || !intakeDraft.owner.trim()) {
-    message.value = { type: 'error', text: 'Project name, client, and owner are required for intake.' }
+async function createProjectIntake() {
+  if (!intakeDraft.name.trim() || !intakeDraft.client.trim()) {
+    message.value = { type: 'error', text: 'Project name and client are required for intake.' }
     return
   }
 
-  message.value = { type: 'success', text: `${intakeDraft.name.trim()} captured for portfolio intake review.` }
-  intakeDraft.name = ''
-  intakeDraft.client = ''
-  intakeDraft.owner = ''
-  intakeDraft.status = 'Planning'
-  intakeDraft.deadline = ''
-  closeIntakeModal()
+  try {
+    await $fetch('/api/projects', {
+      method: 'POST',
+      body: {
+        name: intakeDraft.name.trim(),
+        clientName: intakeDraft.client.trim(),
+        status: intakeDraft.status,
+        description: intakeDraft.description.trim() || undefined,
+        deadline: intakeDraft.deadline ? new Date(intakeDraft.deadline).toISOString() : undefined,
+      },
+    })
+    message.value = { type: 'success', text: `${intakeDraft.name.trim()} captured for portfolio intake review.` }
+    intakeDraft.name = ''
+    intakeDraft.client = ''
+    intakeDraft.status = 'planning'
+    intakeDraft.deadline = ''
+    intakeDraft.description = ''
+    closeIntakeModal()
+    refreshDashboard()
+  } catch (e: any) {
+    message.value = { type: 'error', text: e?.data?.message || 'Failed to create project.' }
+  }
 }
 </script>
