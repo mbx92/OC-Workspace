@@ -10,7 +10,7 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <button class="btn btn-ghost btn-sm">Provider guide</button>
+        <NuxtLink to="/integrations/provider-guide" class="btn btn-ghost btn-sm">Provider guide</NuxtLink>
         <button class="btn btn-outline btn-sm">Export sync log</button>
         <button class="btn btn-primary btn-sm" @click="isConnectionModalOpen = true">Add connection</button>
       </div>
@@ -100,7 +100,7 @@
                     <div class="text-xs text-base-content/50">{{ connection.providerType }} - {{ connection.baseUrl }}</div>
                   </td>
                   <td>
-                    <div class="font-medium text-base-content">{{ connection.projectId?.slice(0, 8) || '—' }}</div>
+                    <div class="font-medium text-base-content">{{ connection.projectId ? (projectMap[connection.projectId] ?? connection.projectId.slice(0, 8)) : '—' }}</div>
                   </td>
                   <td class="text-sm text-base-content/75">{{ connection.authType }}</td>
                   <td>
@@ -176,33 +176,93 @@
       description="Register a read-only provider connection, auth mode, and sync scope before imported records flow into project views."
       @close="closeConnectionModal"
     >
-      <div class="grid gap-3">
-        <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Connection name" />
-        <select v-model="draft.projectId" class="select select-bordered w-full">
-          <option value="">No project</option>
-          <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
-        </select>
-        <select v-model="draft.providerType" class="select select-bordered w-full">
-          <option value="rest_api">REST API</option>
-          <option value="graphql">GraphQL</option>
-          <option value="webhook">Webhook</option>
-          <option value="database">Database</option>
-          <option value="file_import">File Import</option>
-          <option value="custom">Custom</option>
-        </select>
-        <input v-model="draft.baseUrl" type="url" class="input input-bordered w-full" placeholder="Base URL" />
-        <select v-model="draft.authType" class="select select-bordered w-full">
-          <option value="none">None</option>
-          <option value="api_key">API Key</option>
-          <option value="bearer_token">Bearer Token</option>
-          <option value="basic_auth">Basic Auth</option>
-          <option value="oauth2">OAuth2</option>
-        </select>
-      </div>
+      <fieldset class="fieldset gap-4">
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Name</span>
+          <input v-model="draft.name" type="text" class="input input-bordered w-full" placeholder="Connection name" />
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Project</span>
+          <select v-model="draft.projectId" class="select select-bordered w-full">
+            <option value="">No project</option>
+            <option v-for="p in projectOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+          </select>
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Provider type</span>
+          <select v-model="draft.providerType" class="select select-bordered w-full">
+            <option value="rest_api">REST API</option>
+            <option value="graphql">GraphQL</option>
+            <option value="webhook">Webhook</option>
+            <option value="database">Database</option>
+            <option value="file_import">File Import</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Base URL</span>
+          <input v-model="draft.baseUrl" type="url" class="input input-bordered w-full" placeholder="https://api.example.com" />
+        </label>
+        <label class="grid gap-2 md:grid-cols-[8rem_minmax(0,1fr)] md:items-center">
+          <span class="text-sm font-medium text-base-content">Auth method</span>
+          <select v-model="draft.authType" class="select select-bordered w-full">
+            <option value="none">None</option>
+            <option value="api_key">API Key</option>
+            <option value="bearer_token">Bearer Token</option>
+            <option value="basic_auth">Basic Auth</option>
+            <option value="oauth2">OAuth2</option>
+          </select>
+        </label>
+      </fieldset>
 
       <template #actions>
         <button type="button" class="btn btn-ghost" @click="closeConnectionModal">Cancel</button>
         <button type="button" class="btn btn-primary" @click="saveConnection">Save connection</button>
+      </template>
+    </UiWorkspaceModal>
+
+    <!-- API Key reveal modal (shown once after connection is created) -->
+    <UiWorkspaceModal
+      :open="!!newApiKey"
+      title="Koneksi berhasil dibuat"
+      kicker="Integrations"
+      description="Salin nilai-nilai berikut ke .env di client app Anda. API key tidak akan ditampilkan lagi."
+      @close="newApiKey = null; newConnId = null; newConnProjectId = null"
+    >
+      <div class="space-y-4">
+        <div role="alert" class="alert alert-warning py-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span class="text-sm">Simpan nilai-nilai ini sekarang. Sistem tidak akan menampilkan API key lagi setelah modal ini ditutup.</span>
+        </div>
+        <p class="text-xs text-base-content/50">
+          Gunakan sebagai <code class="bg-base-200 px-1 rounded">Authorization: Bearer &lt;key&gt;</code> saat memanggil endpoint <code class="bg-base-200 px-1 rounded">/push</code> dan <code class="bg-base-200 px-1 rounded">/sync</code>.
+        </p>
+        <div class="rounded-lg border border-base-300 bg-base-100 divide-y divide-base-200 text-sm">
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="w-36 shrink-0 text-xs font-semibold text-base-content/50 uppercase tracking-wide">OCS_URL</span>
+            <code class="flex-1 font-mono text-xs break-all select-all text-base-content">{{ origin }}</code>
+            <button class="btn btn-ghost btn-xs shrink-0" @click="copyField('url', origin)">{{ copiedField === 'url' ? '✓' : 'Copy' }}</button>
+          </div>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="w-36 shrink-0 text-xs font-semibold text-base-content/50 uppercase tracking-wide">OCS_CONNECTION_ID</span>
+            <code class="flex-1 font-mono text-xs break-all select-all text-base-content">{{ newConnId ?? '—' }}</code>
+            <button class="btn btn-ghost btn-xs shrink-0" @click="copyField('conn', newConnId)">{{ copiedField === 'conn' ? '✓' : 'Copy' }}</button>
+          </div>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="w-36 shrink-0 text-xs font-semibold text-base-content/50 uppercase tracking-wide">OCS_PROJECT_ID</span>
+            <code class="flex-1 font-mono text-xs break-all select-all text-base-content">{{ newConnProjectId ?? '—' }}</code>
+            <button class="btn btn-ghost btn-xs shrink-0" :disabled="!newConnProjectId" @click="copyField('proj', newConnProjectId)">{{ copiedField === 'proj' ? '✓' : 'Copy' }}</button>
+          </div>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="w-36 shrink-0 text-xs font-semibold text-base-content/50 uppercase tracking-wide">OCS_API_KEY</span>
+            <code class="flex-1 font-mono text-xs break-all select-all text-base-content">{{ newApiKey }}</code>
+            <button class="btn btn-ghost btn-xs shrink-0" @click="copyNewApiKey">{{ newApiKeyCopied ? '✓' : 'Copy' }}</button>
+          </div>
+        </div>
+        <p class="text-xs text-base-content/50">Salin nilai-nilai di atas ke file <code class="bg-base-200 px-1 rounded">.env</code> di aplikasi client Anda.</p>
+      </div>
+      <template #actions>
+        <button type="button" class="btn btn-primary" @click="newApiKey = null; newConnId = null; newConnProjectId = null">Done, saya sudah menyimpannya</button>
       </template>
     </UiWorkspaceModal>
   </div>
@@ -220,6 +280,10 @@ import {
 } from '@tabler/icons-vue'
 
 definePageMeta({ layout: 'default' })
+
+const origin = computed(() =>
+  import.meta.client ? window.location.origin : ''
+)
 
 const { data: connectionsData, refresh: refreshConnections } = await useFetch('/api/integrations')
 
@@ -242,10 +306,32 @@ const draft = reactive({
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const isConnectionModalOpen = ref(false)
+const newApiKey = ref<string | null>(null)
+const newConnId = ref<string | null>(null)
+const newConnProjectId = ref<string | null>(null)
+const newApiKeyCopied = ref(false)
+const copiedField = ref<string | null>(null)
+
+function copyField(key: string, value: string | null) {
+  if (!value) return
+  navigator.clipboard.writeText(value).then(() => {
+    copiedField.value = key
+    setTimeout(() => { copiedField.value = null }, 2000)
+  })
+}
+
+function copyNewApiKey() {
+  if (!newApiKey.value) return
+  navigator.clipboard.writeText(newApiKey.value).then(() => {
+    newApiKeyCopied.value = true
+    setTimeout(() => { newApiKeyCopied.value = false }, 2000)
+  })
+}
 
 const { data: projects } = await useFetch('/api/projects')
 
 const projectOptions = computed(() => (projects.value || []).map((p: any) => ({ id: p.id, name: p.name })))
+const projectMap = computed(() => Object.fromEntries((projects.value || []).map((p: any) => [p.id, p.name])))
 const providerOptions = computed(() => Array.from(new Set(connections.value.map((c: any) => c.providerType))).filter(Boolean).sort())
 
 const filteredConnections = computed(() =>
@@ -313,7 +399,7 @@ async function saveConnection() {
   }
 
   try {
-    await $fetch('/api/integrations', {
+    const result = await $fetch<any>('/api/integrations', {
       method: 'POST',
       body: {
         name: draft.name.trim(),
@@ -330,6 +416,11 @@ async function saveConnection() {
     draft.projectId = ''
     draft.baseUrl = ''
     closeConnectionModal()
+    // Show API key one-time reveal
+    newApiKeyCopied.value = false
+    newApiKey.value = result.apiKey
+    newConnId.value = result.id ?? null
+    newConnProjectId.value = result.projectId ?? null
   } catch (err: any) {
     showMessage('error', err?.data?.statusMessage || 'Failed to save connection.')
   }

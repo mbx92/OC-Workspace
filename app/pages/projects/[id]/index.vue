@@ -791,6 +791,7 @@ async function createItem() {
           status: draft.status,
           businessValue: draft.businessValue || undefined,
           targetRelease: draft.targetRelease || undefined,
+          dueDate: draft.dueDate || undefined,
           assigneeIds: draft.assigneeIds.length ? draft.assigneeIds : undefined,
         },
       })

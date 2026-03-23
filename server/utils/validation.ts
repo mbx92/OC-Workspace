@@ -18,6 +18,8 @@ export const createProjectSchema = z.object({
   name: z.string().min(1).max(255),
   clientName: z.string().max(255).nullish(),
   status: z.enum(['planning', 'active', 'on-hold', 'completed', 'cancelled']).default('planning'),
+  contractValue: z.number().int().min(0).nullish(),
+  currency: z.string().length(3).default('IDR'),
   startDate: z.string().nullish(),
   deadline: z.string().nullish(),
   notes: z.string().nullish(),
@@ -40,6 +42,7 @@ export const createFeatureSchema = z.object({
   status: z.enum(['backlog', 'planned', 'in-progress', 'blocked', 'done', 'cancelled']).default('backlog'),
   businessValue: z.string().nullish(),
   targetRelease: z.string().max(100).nullish(),
+  dueDate: z.string().nullish(),
   ownerId: z.string().uuid().nullish(),
   assigneeIds: z.array(z.string().uuid()).nullish(),
 })
@@ -191,7 +194,12 @@ export const createIntegrationSchema = z.object({
   authType: z.enum(['api_key', 'bearer_token', 'basic_auth', 'oauth2', 'none']).default('none'),
 })
 
-export const updateIntegrationSchema = createIntegrationSchema.partial()
+export const updateIntegrationSchema = createIntegrationSchema.partial().extend({
+  webhookEnabled: z.boolean().optional(),
+  webhookPath: z.string().max(500).nullish(),
+  webhookSecret: z.string().max(255).nullish(),
+  status: z.enum(['active', 'paused', 'error', 'archived']).optional(),
+})
 
 // --- Users ---
 export const createUserSchema = z.object({

@@ -17,26 +17,36 @@
     </section>
 
     <section>
-      <div class="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm lg:stats-horizontal">
-        <div class="stat">
-          <div class="stat-title">{{ t('finance.plannedBudget') }}</div>
-          <div class="stat-value text-primary">{{ formatCurrency(financeStats.totalPlanned) }}</div>
-          <div class="stat-desc">{{ t('finance.acrossActiveTrackedProjects') }}</div>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">{{ t('finance.plannedBudget') }}</div>
+          <div class="mt-1 text-lg font-bold text-primary">{{ formatCurrency(financeStats.totalPlanned) }}</div>
+          <div class="text-xs text-base-content/40">{{ t('finance.acrossActiveTrackedProjects') }}</div>
         </div>
-        <div class="stat">
-          <div class="stat-title">{{ t('finance.actualSpend') }}</div>
-          <div class="stat-value text-warning">{{ formatCurrency(financeStats.totalActual) }}</div>
-          <div class="stat-desc">{{ t('finance.projectOverPlan', { count: financeStats.overBudgetProjects }) }}</div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">{{ t('finance.actualSpend') }}</div>
+          <div class="mt-1 text-lg font-bold text-warning">{{ formatCurrency(financeStats.totalActual) }}</div>
+          <div class="text-xs text-base-content/40">{{ t('finance.projectOverPlan', { count: financeStats.overBudgetProjects }) }}</div>
         </div>
-        <div class="stat">
-          <div class="stat-title">{{ t('finance.outstandingCommissions') }}</div>
-          <div class="stat-value text-secondary">{{ formatCurrency(financeStats.outstandingCommission) }}</div>
-          <div class="stat-desc">{{ t('finance.awaitingApproval', { count: financeStats.awaitingApproval }) }}</div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">{{ t('finance.outstandingCommissions') }}</div>
+          <div class="mt-1 text-lg font-bold text-secondary">{{ formatCurrency(financeStats.outstandingCommission) }}</div>
+          <div class="text-xs text-base-content/40">{{ t('finance.awaitingApproval', { count: financeStats.awaitingApproval }) }}</div>
         </div>
-        <div class="stat">
-          <div class="stat-title">{{ t('finance.paidThisCycle') }}</div>
-          <div class="stat-value text-info">{{ formatCurrency(financeStats.paidCommission) }}</div>
-          <div class="stat-desc">{{ t('finance.approvedPayoutTrail') }}</div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">{{ t('finance.paidThisCycle') }}</div>
+          <div class="mt-1 text-lg font-bold text-info">{{ formatCurrency(financeStats.paidCommission) }}</div>
+          <div class="text-xs text-base-content/40">{{ t('finance.approvedPayoutTrail') }}</div>
+        </div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">Total Revenue</div>
+          <div class="mt-1 text-lg font-bold text-accent">{{ formatCurrency(financeStats.totalRevenue) }}</div>
+          <div class="text-xs text-base-content/40">From contract values</div>
+        </div>
+        <div class="rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
+          <div class="text-xs text-base-content/50">Net Profit</div>
+          <div class="mt-1 text-lg font-bold" :class="financeStats.totalNetProfit >= 0 ? 'text-success' : 'text-error'">{{ formatCurrency(financeStats.totalNetProfit) }}</div>
+          <div class="text-xs text-base-content/40">After expenses &amp; commissions</div>
         </div>
       </div>
     </section>
@@ -56,6 +66,10 @@
               </button>
               <button class="tab gap-2" :class="{ 'tab-active': activeTab === 'history' }" @click="activeTab = 'history'">
                 History
+              </button>
+              <button class="tab gap-2" :class="{ 'tab-active': activeTab === 'pnl' }" @click="activeTab = 'pnl'">
+                P&amp;L
+                <span class="badge badge-sm badge-ghost">{{ pnlRows.filter(r => r.hasContractValue).length }}</span>
               </button>
             </div>
           </div>
@@ -211,6 +225,55 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+          <div v-else-if="activeTab === 'pnl'" class="overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Revenue</th>
+                  <th>Expenses</th>
+                  <th>Commissions</th>
+                  <th>Gross Profit</th>
+                  <th>Net Profit</th>
+                  <th>Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in pnlRows" :key="row.projectId">
+                  <td>
+                    <div class="font-medium text-base-content">{{ row.project }}</div>
+                    <div class="text-xs text-base-content/50">{{ row.client }}</div>
+                  </td>
+                  <td>
+                    <span v-if="!row.hasContractValue" class="text-xs italic text-base-content/40">Not set</span>
+                    <span v-else>{{ formatCurrency(row.revenue) }}</span>
+                  </td>
+                  <td>{{ formatCurrency(row.totalExpenses) }}</td>
+                  <td>{{ formatCurrency(row.totalCommissions) }}</td>
+                  <td :class="row.grossProfit < 0 ? 'font-semibold text-error' : 'text-base-content'">{{ row.hasContractValue ? formatCurrency(row.grossProfit) : '—' }}</td>
+                  <td :class="row.netProfit < 0 ? 'font-semibold text-error' : 'font-semibold text-success'">{{ row.hasContractValue ? formatCurrency(row.netProfit) : '—' }}</td>
+                  <td>
+                    <span
+                      v-if="row.marginPercent !== null"
+                      class="badge badge-sm"
+                      :class="row.marginPercent >= 20 ? 'badge-success' : row.marginPercent >= 0 ? 'badge-warning' : 'badge-error'"
+                    >
+                      {{ row.marginPercent }}%
+                    </span>
+                    <span v-else class="text-xs text-base-content/40">—</span>
+                  </td>
+                </tr>
+                <tr v-if="pnlRows.length === 0">
+                  <td colspan="7" class="py-8 text-center text-sm text-base-content/55">No projects found.</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="pnlRows.some(r => !r.hasContractValue)" class="border-t border-base-300 px-5 py-3">
+              <p class="text-xs text-base-content/55">
+                Projects showing "Not set" have no contract value. <NuxtLink to="/projects" class="link link-primary">Edit a project</NuxtLink> to add one.
+              </p>
             </div>
           </div>
         </div>
@@ -466,7 +529,7 @@ definePageMeta({ layout: 'default' })
 const { t } = useAppI18n()
 const { formatCurrency, formatNumberInput, parseNumericInput } = useAppFormatting()
 
-const activeTab = ref<'budgets' | 'commissions' | 'history'>('budgets')
+const activeTab = ref<'budgets' | 'commissions' | 'history' | 'pnl'>('budgets')
 const activeModal = ref<null | 'budget' | 'commission' | 'editEntry'>(null)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const commissionAction = reactive<{ id: string; nextStatus: '' | 'approved' | 'paid' | 'cancelled' }>({
@@ -511,6 +574,26 @@ const budgetRows = computed(() => {
   }).filter((row: any) => row.planned > 0 || row.actual > 0)
 })
 
+const pnlRows = computed(() => {
+  if (!projects.value) return []
+  return (projects.value as any[]).map((project: any) => {
+    const pnl = (budgetData.value[project.id] as any)?.pnl
+    return {
+      projectId: project.id,
+      project: project.name,
+      client: project.clientName || '—',
+      hasContractValue: pnl?.hasContractValue ?? false,
+      revenue: pnl?.revenue ?? 0,
+      totalExpenses: pnl?.totalExpenses ?? 0,
+      totalCommissions: pnl?.totalCommissions ?? 0,
+      grossProfit: pnl?.grossProfit ?? 0,
+      netProfit: pnl?.netProfit ?? 0,
+      marginPercent: pnl?.marginPercent ?? null,
+      currency: pnl?.currency ?? 'IDR',
+    }
+  })
+})
+
 const commissions = computed(() => commissionsData.value || [])
 const projectLookup = computed(() => {
   const rows = (projects.value || []) as any[]
@@ -529,6 +612,8 @@ const financeStats = computed(() => ({
   outstandingCommission: commissions.value.filter((item: any) => item.status !== 'paid' && item.status !== 'cancelled').reduce((sum: number, item: any) => sum + (item.commissionAmount || 0), 0),
   awaitingApproval: commissions.value.filter((item: any) => item.status === 'draft').length,
   paidCommission: commissions.value.filter((item: any) => item.status === 'paid').reduce((sum: number, item: any) => sum + (item.commissionAmount || 0), 0),
+  totalRevenue: pnlRows.value.filter(r => r.hasContractValue).reduce((sum, r) => sum + r.revenue, 0),
+  totalNetProfit: pnlRows.value.filter(r => r.hasContractValue).reduce((sum, r) => sum + r.netProfit, 0),
 }))
 
 const budgetAlert = computed(() => {

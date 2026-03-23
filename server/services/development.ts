@@ -1,6 +1,7 @@
 import { db } from '../db/client'
 import { features, bugs, tasks, featureAssignees, bugAssignees, taskAssignees, users } from '../db/schema'
 import { eq, desc, and, inArray } from 'drizzle-orm'
+import { triggerWebhookForEntity } from './integrations'
 
 // ---------- Assignee helpers ----------
 
@@ -62,7 +63,7 @@ export async function getFeature(id: string) {
   return { ...feature, assignees: asgn.map(a => ({ userId: a.userId, name: a.name })) }
 }
 
-export async function createFeature(data: Record<string, unknown>, userId: string) {
+export async function createFeature(data: Record<string, unknown>, userId: string | null) {
   const { assigneeIds, ...featureData } = data as any
   const ids: string[] = assigneeIds ?? []
   if (ids.length > 0) featureData.ownerId = ids[0]
@@ -82,7 +83,7 @@ export async function createFeature(data: Record<string, unknown>, userId: strin
   return { ...feature, assignees: ids.map(uid => ({ userId: uid, name: null })) }
 }
 
-export async function updateFeature(id: string, data: Record<string, unknown>, userId: string) {
+export async function updateFeature(id: string, data: Record<string, unknown>, userId: string | null) {
   const before = await getFeature(id)
   const { assigneeIds, ...updateData } = data as any
   if (assigneeIds !== undefined) {
@@ -107,6 +108,8 @@ export async function updateFeature(id: string, data: Record<string, unknown>, u
     before,
     after: updated,
   })
+
+  triggerWebhookForEntity('feature', id, 'feature.updated', { id: updated.id, title: updated.title, status: updated.status, priority: updated.priority }).catch(() => {})
 
   return getFeature(id)
 }
@@ -142,7 +145,7 @@ export async function getBug(id: string) {
   return { ...bug, assignees: asgn.map(a => ({ userId: a.userId, name: a.name })) }
 }
 
-export async function createBug(data: Record<string, unknown>, userId: string) {
+export async function createBug(data: Record<string, unknown>, userId: string | null) {
   const { assigneeIds, ...bugData } = data as any
   const ids: string[] = assigneeIds ?? []
   if (ids.length > 0) bugData.assigneeId = ids[0]
@@ -162,7 +165,7 @@ export async function createBug(data: Record<string, unknown>, userId: string) {
   return { ...bug, assignees: ids.map(uid => ({ userId: uid, name: null })) }
 }
 
-export async function updateBug(id: string, data: Record<string, unknown>, userId: string) {
+export async function updateBug(id: string, data: Record<string, unknown>, userId: string | null) {
   const before = await getBug(id)
   const { assigneeIds, ...updateData } = data as any
   if (assigneeIds !== undefined) {
@@ -187,6 +190,8 @@ export async function updateBug(id: string, data: Record<string, unknown>, userI
     before,
     after: updated,
   })
+
+  triggerWebhookForEntity('bug', id, 'bug.updated', { id: updated.id, title: updated.title, status: updated.status, priority: updated.priority, severity: updated.severity }).catch(() => {})
 
   return getBug(id)
 }
@@ -222,7 +227,7 @@ export async function getTask(id: string) {
   return { ...task, assignees: asgn.map(a => ({ userId: a.userId, name: a.name })) }
 }
 
-export async function createTask(data: Record<string, unknown>, userId: string) {
+export async function createTask(data: Record<string, unknown>, userId: string | null) {
   const { assigneeIds, ...taskData } = data as any
   const ids: string[] = assigneeIds ?? []
   if (ids.length > 0) taskData.assigneeId = ids[0]
@@ -242,7 +247,7 @@ export async function createTask(data: Record<string, unknown>, userId: string) 
   return { ...task, assignees: ids.map(uid => ({ userId: uid, name: null })) }
 }
 
-export async function updateTask(id: string, data: Record<string, unknown>, userId: string) {
+export async function updateTask(id: string, data: Record<string, unknown>, userId: string | null) {
   const before = await getTask(id)
   const { assigneeIds, ...updateData } = data as any
   if (assigneeIds !== undefined) {
@@ -267,6 +272,8 @@ export async function updateTask(id: string, data: Record<string, unknown>, user
     before,
     after: updated,
   })
+
+  triggerWebhookForEntity('task', id, 'task.updated', { id: updated.id, title: updated.title, status: updated.status, priority: updated.priority }).catch(() => {})
 
   return getTask(id)
 }

@@ -75,13 +75,18 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control w-full">
-              <label class="label"><span class="label-text font-medium">Nama Proyek</span></label>
-              <input type="text" v-model="docs.proposal.projectName" class="input input-bordered w-full" />
+              <label class="label"><span class="label-text font-medium">Nomor Proposal</span></label>
+              <input type="text" v-model="docs.proposal.number" class="input input-bordered w-full" placeholder="e.g. OC/PRO/2026/001" />
             </div>
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-medium">Klien / Perusahaan</span></label>
               <input type="text" v-model="docs.proposal.clientName" class="input input-bordered w-full" placeholder="Nama klien atau perusahaan" />
             </div>
+          </div>
+
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">Nama Proyek</span></label>
+            <input type="text" v-model="docs.proposal.projectName" class="input input-bordered w-full" />
           </div>
 
           <div class="form-control w-full">
@@ -156,7 +161,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-medium">Nomor Penawaran</span></label>
-              <input type="text" v-model="docs.penawaran.number" class="input input-bordered w-full" placeholder="e.g. ST/PNW/2026/001" />
+              <input type="text" v-model="docs.penawaran.number" class="input input-bordered w-full" placeholder="e.g. OC/PNW/2026/001" />
             </div>
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-medium">Berlaku Sampai</span></label>
@@ -266,7 +271,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-medium">Nomor Perjanjian</span></label>
-              <input type="text" v-model="docs.agreement.number" class="input input-bordered w-full" placeholder="e.g. ST/AGR/2026/001" />
+              <input type="text" v-model="docs.agreement.number" class="input input-bordered w-full" placeholder="e.g. OC/AGR/2026/001" />
             </div>
             <div class="form-control w-full">
               <label class="label"><span class="label-text font-medium">Status</span></label>
@@ -366,6 +371,7 @@
         <div v-if="activeTab === 'proposal'" class="prose prose-sm max-w-none" id="printArea">
           <div class="text-center mb-6">
             <h1 class="text-xl font-bold mb-1">PROPOSAL PROYEK</h1>
+            <p class="font-mono text-sm">{{ docs.proposal.number }}</p>
             <h2 class="text-lg text-primary font-semibold">{{ docs.proposal.projectName }}</h2>
             <p class="text-sm text-base-content/50">Versi {{ docs.proposal.version }} — {{ docs.proposal.lastUpdated }}</p>
           </div>
@@ -611,8 +617,8 @@ const saveClause = () => {
 }
 
 const legacyProposalDefaults = {
-  projectName: 'SignalTribe — Platform Trading Signals SaaS',
-  summary: 'SignalTribe adalah platform SaaS untuk trading signals yang menghubungkan analis trading profesional dengan trader yang ingin mendapatkan sinyal trading berkualitas tinggi secara real-time.\n\nPlatform ini memungkinkan analis untuk mempublikasikan sinyal trading (LONG/SHORT) dengan entry, take-profit, dan stop-loss. Trader dapat berlangganan analis favorit dan menerima notifikasi sinyal real-time.',
+  projectName: 'OC Development — Software Development Services',
+  summary: 'OC Development adalah tim pengembang software profesional yang berfokus pada solusi web dan mobile custom untuk bisnis.\n\nKami menyediakan layanan pengembangan end-to-end mulai dari analisis kebutuhan, desain sistem, implementasi, hingga deployment dan pemeliharaan.',
   scope: '• Autentikasi & manajemen user (role-based: Admin, Analyst, Trader)\n• Dashboard multi-role (Admin, Analyst, Trader)\n• Sistem trading signals (publish, update, close)\n• Trading journal (CRUD, draft/published)\n• Sistem berlangganan (subscribe/unsubscribe, pembayaran)\n• Payment gateway integration (Midtrans/Xendit)\n• Notifikasi in-app\n• Landing page CMS\n• Public signal feed',
   timeline: '8 minggu (Fase 1-5)',
   deliverables: [
@@ -626,8 +632,8 @@ const legacyProposalDefaults = {
 }
 
 const professionalProposalDefaults = {
-  projectName: 'Proposal Pengembangan Platform SignalTribe',
-  summary: 'Dokumen ini mengusulkan pengembangan SignalTribe sebagai platform digital berlangganan untuk distribusi trading signal dan insight pasar secara terstruktur, aman, dan skalabel.\n\nSolusi dirancang untuk mendukung proses bisnis end-to-end, mulai dari pengelolaan analis, publikasi sinyal, pengaturan akses pelanggan, notifikasi real-time, hingga panel administrasi dan pengelolaan konten landing page.\n\nMelalui implementasi ini, klien memperoleh fondasi produk yang siap dikembangkan secara bertahap, mempermudah monetisasi layanan analis, serta memperkuat kredibilitas brand melalui pengalaman pengguna yang konsisten dan profesional.',
+  projectName: 'Proposal Pengembangan Software',
+  summary: 'Dokumen ini mengusulkan pengembangan solusi software custom oleh OC Development sesuai dengan kebutuhan dan alur bisnis klien.\n\nSolusi dirancang untuk mendukung proses bisnis end-to-end, dari analisis kebutuhan, arsitektur sistem, pengembangan fitur inti, hingga deployment dan serah terima.\n\nMelalui implementasi ini, klien memperoleh produk yang scalable, maintainable, dan siap untuk dikembangkan lebih lanjut sesuai roadmap bisnis.',
   scope: '• Analisis kebutuhan dan perumusan alur bisnis inti platform\n• Implementasi autentikasi dan otorisasi berbasis peran (Admin, Analyst, User)\n• Pengembangan dashboard operasional untuk admin, analis, dan pengguna akhir\n• Modul publikasi signal trading lengkap dengan entry, take-profit, stop-loss, dan status signal\n• Modul trading journal untuk dokumentasi insight, evaluasi, dan edukasi analis\n• Sistem langganan analis termasuk aktivasi, pengelolaan akses, dan histori subscription\n• Integrasi notifikasi real-time untuk update signal dan aktivitas penting pengguna\n• Landing page berbasis CMS untuk kebutuhan pemasaran dan pengelolaan konten\n• Penyusunan API, struktur database, dan fondasi teknis untuk pengembangan lanjutan',
   timeline: 'Estimasi 8 minggu kerja dengan pelaksanaan bertahap per fase, mencakup analisis, pengembangan, pengujian, user acceptance testing, dan persiapan go-live.',
   deliverables: [
@@ -648,6 +654,7 @@ const hasSameItems = (left = [], right = []) => {
 // Default data - loaded from settings
 const docs = reactive({
   proposal: {
+    number: 'OC/PRO/2026/001',
     projectName: currentProject.value.name,
     clientName: currentProject.value.clientName,
     summary: professionalProposalDefaults.summary,
@@ -659,7 +666,7 @@ const docs = reactive({
     lastUpdated: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
   },
   penawaran: {
-    number: 'ST/PNW/2026/001',
+    number: 'OC/PNW/2026/001',
     clientName: currentProject.value.clientName,
     validUntil: '',
     status: 'Draft',
@@ -677,12 +684,12 @@ const docs = reactive({
     notes: 'Estimasi biaya belum termasuk biaya hosting, domain, dan biaya payment gateway.\nRevisi maksimal 3x per fase.',
   },
   agreement: {
-    number: 'ST/AGR/2026/001',
+    number: 'OC/AGR/2026/001',
     status: 'Draft',
     effectiveDate: '',
     endDate: '',
     partyOne: {
-      name: 'SignalTribe Development Team',
+      name: 'OC Development',
       address: '',
       pic: '',
     },
@@ -694,7 +701,7 @@ const docs = reactive({
     clauses: [
       {
         title: 'Ruang Lingkup Pekerjaan',
-        content: 'Pihak Pertama setuju untuk mengembangkan platform SignalTribe sesuai dengan spesifikasi yang tercantum dalam Proposal Proyek dan Surat Penawaran yang telah disetujui oleh kedua belah pihak.',
+        content: 'Pihak Pertama setuju untuk mengembangkan software sesuai dengan spesifikasi yang tercantum dalam Proposal Proyek dan Surat Penawaran yang telah disetujui oleh kedua belah pihak.',
       },
       {
         title: 'Jangka Waktu',
@@ -746,6 +753,7 @@ const loadFromDB = async () => {
       if (key === 'proposal') {
         Object.assign(docs.proposal, payload)
         if (Array.isArray(payload.deliverables)) docs.proposal.deliverables = payload.deliverables
+        docs.proposal.version = String(latestVersion.versionNumber)
       } else if (key === 'penawaran') {
         Object.assign(docs.penawaran, payload)
         if (Array.isArray(payload.items)) docs.penawaran.items = payload.items
@@ -807,7 +815,7 @@ const normalizePdfLines = (value) => {
 
 const buildPdfFilename = () => {
   const baseName = {
-    proposal: docs.proposal.projectName || 'proposal',
+    proposal: docs.proposal.number || docs.proposal.projectName || 'proposal',
     penawaran: docs.penawaran.number || 'penawaran',
     agreement: docs.agreement.number || 'agreement',
   }[activeTab.value] || 'legal-doc'
@@ -899,8 +907,15 @@ const generateProposalPdf = (pdf) => {
   pdf.setTextColor(18, 74, 52)
   pdf.text('PROPOSAL PROYEK', pageWidth / 2, cursorY, { align: 'center' })
 
-  cursorY += 24
+  cursorY += 16
+  pdf.setFontSize(11)
+  pdf.setFont('helvetica', 'normal')
+  pdf.setTextColor(100, 100, 100)
+  pdf.text(docs.proposal.number || '-', pageWidth / 2, cursorY, { align: 'center' })
+
+  cursorY += 14
   pdf.setFontSize(14)
+  pdf.setFont('helvetica', 'bold')
   pdf.setTextColor(28, 28, 28)
   pdf.text(docs.proposal.projectName || 'Proposal Proyek', pageWidth / 2, cursorY, { align: 'center' })
 
@@ -1077,10 +1092,13 @@ const saveDocuments = async () => {
               clauses: docs.agreement.clauses.map(c => ({ ...c })),
             }
 
-      await $fetch(`/api/legal/documents/${docIds[entry.key]}/versions`, {
+      const savedVersion = await $fetch(`/api/legal/documents/${docIds[entry.key]}/versions`, {
         method: 'POST',
         body: { documentId: docIds[entry.key], payloadJson: payload },
       })
+      if (entry.key === 'proposal') {
+        docs.proposal.version = String(savedVersion?.versionNumber ?? docs.proposal.version)
+      }
     }
 
     alertType.value = 'success'
@@ -1113,9 +1131,9 @@ const downloadPdf = async () => {
         : activeTab.value === 'penawaran'
           ? 'Surat Penawaran'
           : 'Perjanjian Kerjasama',
-      subject: 'SignalTribe Legal Documents',
-      author: 'SignalTribe',
-      creator: 'SignalTribe Admin',
+      subject: 'OC Development Legal Documents',
+      author: 'OC Development',
+      creator: 'OC Development Admin',
     })
 
     if (activeTab.value === 'proposal') {

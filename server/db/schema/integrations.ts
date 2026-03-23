@@ -37,8 +37,12 @@ export const integrationConnections = pgTable('integration_connections', {
   baseUrl: varchar('base_url', { length: 1000 }),
   authType: integrationAuthTypeEnum('auth_type').notNull().default('none'),
   encryptedCredentials: text('encrypted_credentials'),
+  apiKeyHash: varchar('api_key_hash', { length: 255 }),
   status: integrationStatusEnum('status').notNull().default('active'),
   lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  webhookEnabled: boolean('webhook_enabled').notNull().default(false),
+  webhookPath: varchar('webhook_path', { length: 500 }),
+  webhookSecret: varchar('webhook_secret', { length: 255 }),
   createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -100,4 +104,27 @@ export const externalRecords = pgTable('external_records', {
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// --- Webhook Deliveries ---
+
+export const webhookDeliveryStatusEnum = pgEnum('webhook_delivery_status', [
+  'pending',
+  'delivered',
+  'failed',
+])
+
+export const integrationWebhookDeliveries = pgTable('integration_webhook_deliveries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  connectionId: uuid('connection_id')
+    .notNull()
+    .references(() => integrationConnections.id, { onDelete: 'cascade' }),
+  entityType: varchar('entity_type', { length: 100 }).notNull(),
+  entityId: uuid('entity_id').notNull(),
+  event: varchar('event', { length: 100 }).notNull(),
+  requestUrl: varchar('request_url', { length: 1000 }),
+  responseStatus: integer('response_status'),
+  status: webhookDeliveryStatusEnum('status').notNull().default('pending'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })

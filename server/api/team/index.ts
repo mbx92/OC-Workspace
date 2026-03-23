@@ -1,4 +1,4 @@
-import { listUsers, createUser } from '../../services/users'
+import { listUsersWithStats, createUser } from '../../services/users'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)
@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 
   if (method === 'GET') {
     requireMinRole(user, 'project_manager')
-    return listUsers()
+    return listUsersWithStats()
   }
 
   if (method === 'POST') {

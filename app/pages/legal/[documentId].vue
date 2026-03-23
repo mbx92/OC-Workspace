@@ -17,8 +17,13 @@
 
       <div class="flex flex-wrap gap-2">
         <NuxtLink to="/legal" class="btn btn-ghost btn-sm">Back to legal</NuxtLink>
-        <button class="btn btn-outline btn-sm" @click="markApproved">Approve</button>
-        <button class="btn btn-outline btn-sm" @click="sendDocument">Send</button>
+        <template v-if="document">
+          <button v-if="document.status === 'draft'" class="btn btn-outline btn-sm" @click="changeStatus('in-review')">Request Review</button>
+          <button v-if="document.status === 'in-review'" class="btn btn-outline btn-sm" @click="changeStatus('approved')">Approve</button>
+          <button v-if="document.status === 'approved'" class="btn btn-outline btn-sm" @click="changeStatus('sent')">Mark as Sent</button>
+          <button v-if="document.status === 'sent'" class="btn btn-success btn-sm" @click="changeStatus('signed')">Mark as Signed</button>
+          <button v-if="!['archived', 'signed'].includes(document.status)" class="btn btn-ghost btn-sm text-base-content/50" @click="changeStatus('archived')">Archive</button>
+        </template>
         <button class="btn btn-primary btn-sm" @click="exportDocument">Export PDF</button>
       </div>
     </section>
@@ -68,7 +73,7 @@
                 <div class="mt-6 grid gap-4 md:grid-cols-2">
                   <div class="rounded-box bg-base-200/50 px-4 py-3">
                     <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Project</div>
-                    <div class="mt-1 font-medium text-base-content">{{ document.projectId?.slice(0, 8) }}</div>
+                    <div class="mt-1 font-medium text-base-content">{{ (document as any).projectName || document.projectId?.slice(0, 8) }}</div>
                   </div>
                   <div class="rounded-box bg-base-200/50 px-4 py-3">
                     <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Client</div>
@@ -141,7 +146,7 @@
             <div class="space-y-3 text-sm">
               <div class="rounded-box bg-base-200/50 px-4 py-3">
                 <div class="font-medium text-base-content">Owner</div>
-                <div class="mt-1 text-base-content/65">{{ document.ownerId?.slice(0, 8) }}</div>
+                <div class="mt-1 text-base-content/65">{{ (document as any).ownerName || document.ownerId?.slice(0, 8) || '—' }}</div>
               </div>
               <div class="rounded-box bg-base-200/50 px-4 py-3">
                 <div class="font-medium text-base-content">Updated At</div>
@@ -289,31 +294,24 @@ const previewFooter = computed(() => {
   return `Document owner is responsible for maintaining versions and preserving export and activity history.`
 })
 
-async function markApproved() {
+async function changeStatus(status: string) {
   if (!document.value) return
-  try {
-    await $fetch(`/api/legal/documents/${documentId}`, {
-      method: 'PATCH',
-      body: { status: 'approved' },
-    })
-    await refreshDoc()
-    message.value = { type: 'success', text: 'Document marked as approved.' }
-  } catch (err: any) {
-    message.value = { type: 'error', text: err?.data?.statusMessage || 'Failed to approve document.' }
+  const labels: Record<string, string> = {
+    'in-review': 'sent for review',
+    'approved': 'approved',
+    'sent': 'marked as sent',
+    'signed': 'marked as signed',
+    'archived': 'archived',
   }
-}
-
-async function sendDocument() {
-  if (!document.value) return
   try {
     await $fetch(`/api/legal/documents/${documentId}`, {
       method: 'PATCH',
-      body: { status: 'sent' },
+      body: { status },
     })
     await refreshDoc()
-    message.value = { type: 'success', text: 'Document marked as sent.' }
+    message.value = { type: 'success', text: `Document ${labels[status] ?? status}.` }
   } catch (err: any) {
-    message.value = { type: 'error', text: err?.data?.statusMessage || 'Failed to send document.' }
+    message.value = { type: 'error', text: err?.data?.statusMessage || 'Failed to update document status.' }
   }
 }
 

@@ -1,4 +1,4 @@
-import { listBudgetPlans, listBudgetEntries, getBudgetSummary } from '../../services/finance'
+import { listBudgetPlans, listBudgetEntries, getBudgetSummary, getProjectPnL } from '../../services/finance'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)
@@ -9,12 +9,13 @@ export default defineEventHandler(async (event) => {
     const projectId = query.projectId as string
     if (!projectId) throw createError({ statusCode: 400, statusMessage: 'projectId is required' })
 
-    const [plans, entries, summary] = await Promise.all([
+    const [plans, entries, summary, pnl] = await Promise.all([
       listBudgetPlans(projectId),
       listBudgetEntries(projectId),
       getBudgetSummary(projectId),
+      getProjectPnL(projectId),
     ])
 
-    return { plans, entries, summary }
+    return { plans, entries, summary, pnl }
   }
 })

@@ -1,6 +1,6 @@
 import { db } from '../db/client'
-import { legalDocumentTemplates, legalDocuments, legalDocumentVersions } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { legalDocumentTemplates, legalDocuments, legalDocumentVersions, projects, users } from '../db/schema'
+import { eq, desc, inArray, sql } from 'drizzle-orm'
 
 // ==================== TEMPLATES ====================
 
@@ -63,13 +63,50 @@ export async function listLegalDocuments(projectId?: string) {
   if (projectId) {
     rows = rows.filter(d => d.projectId === projectId)
   }
-  return rows
+  if (!rows.length) return []
+
+  const docIds = rows.map(r => r.id)
+
+  const ownerIds = [...new Set(rows.map(r => r.ownerId).filter(Boolean) as string[])]
+  const ownerMap: Record<string, string> = {}
+  if (ownerIds.length) {
+    const owners = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, ownerIds))
+    for (const o of owners) ownerMap[o.id] = o.name
+  }
+
+  const versionRows = await db
+    .select({
+      documentId: legalDocumentVersions.documentId,
+      latestVersion: sql<number>`max(${legalDocumentVersions.versionNumber})`,
+    })
+    .from(legalDocumentVersions)
+    .where(inArray(legalDocumentVersions.documentId, docIds))
+    .groupBy(legalDocumentVersions.documentId)
+  const versionMap: Record<string, number> = {}
+  for (const v of versionRows) versionMap[v.documentId] = v.latestVersion
+
+  return rows.map(r => ({
+    ...r,
+    ownerName: r.ownerId ? (ownerMap[r.ownerId] ?? null) : null,
+    latestVersion: versionMap[r.id] ?? null,
+  }))
 }
 
 export async function getLegalDocument(id: string) {
   const [doc] = await db.select().from(legalDocuments).where(eq(legalDocuments.id, id)).limit(1)
   if (!doc) throw createError({ statusCode: 404, statusMessage: 'Document not found' })
-  return doc
+
+  const [project] = doc.projectId
+    ? await db.select({ name: projects.name }).from(projects).where(eq(projects.id, doc.projectId)).limit(1)
+    : []
+  const [owner] = doc.ownerId
+    ? await db.select({ name: users.name }).from(users).where(eq(users.id, doc.ownerId)).limit(1)
+    : []
+
+  return { ...doc, projectName: project?.name ?? null, ownerName: owner?.name ?? null }
 }
 
 export async function createLegalDocument(data: Record<string, unknown>, userId: string) {
@@ -112,6 +149,27 @@ export async function updateLegalDocument(id: string, data: Record<string, unkno
   }
   if (data.status === 'signed') {
     updateData.signedAt = new Date()
+
+    // Auto-populate contractValue on the project when a quotation or agreement is signed
+    if (before.projectId && (before.documentType === 'quotation' || before.documentType === 'agreement')) {
+      const [latestVersion] = await db
+        .select({ payloadJson: legalDocumentVersions.payloadJson })
+        .from(legalDocumentVersions)
+        .where(eq(legalDocumentVersions.documentId, id))
+        .orderBy(desc(legalDocumentVersions.versionNumber))
+        .limit(1)
+
+      const payload = latestVersion?.payloadJson as Record<string, any> | null
+      const items: Array<{ price?: number }> = Array.isArray(payload?.items) ? payload.items : []
+      const total = items.reduce((sum, item) => sum + (Number(item.price) || 0), 0)
+
+      if (total > 0) {
+        await db
+          .update(projects)
+          .set({ contractValue: total, updatedAt: new Date() })
+          .where(eq(projects.id, before.projectId))
+      }
+    }
   }
 
   const [updated] = await db

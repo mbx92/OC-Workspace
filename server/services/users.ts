@@ -1,6 +1,6 @@
 import { db } from '../db/client'
-import { users } from '../db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { users, projectMembers, tasks, taskAssignees, commissions } from '../db/schema'
+import { eq, desc, inArray, and, count, sql } from 'drizzle-orm'
 import bcryptjs from 'bcryptjs'
 
 export async function listUsers() {
@@ -17,6 +17,55 @@ export async function listUsers() {
     })
     .from(users)
     .orderBy(desc(users.createdAt))
+}
+
+export async function listUsersWithStats() {
+  const allUsers = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role,
+      isActive: users.isActive,
+      joinDate: users.joinDate,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt))
+
+  if (!allUsers.length) return []
+  const userIds = allUsers.map(u => u.id)
+
+  const projCounts = await db
+    .select({ userId: projectMembers.userId, total: count() })
+    .from(projectMembers)
+    .where(inArray(projectMembers.userId, userIds))
+    .groupBy(projectMembers.userId)
+
+  const taskCounts = await db
+    .select({ userId: taskAssignees.userId, total: count() })
+    .from(taskAssignees)
+    .innerJoin(tasks, eq(taskAssignees.taskId, tasks.id))
+    .where(and(inArray(taskAssignees.userId, userIds), sql`${tasks.status} != 'done'`))
+    .groupBy(taskAssignees.userId)
+
+  const commissionUsers = await db
+    .select({ userId: commissions.recipientUserId })
+    .from(commissions)
+    .where(and(inArray(commissions.recipientUserId, userIds), sql`${commissions.status} != 'cancelled'`))
+    .groupBy(commissions.recipientUserId)
+
+  const projMap = Object.fromEntries(projCounts.map(r => [r.userId, Number(r.total)]))
+  const taskMap = Object.fromEntries(taskCounts.map(r => [r.userId, Number(r.total)]))
+  const commSet = new Set(commissionUsers.map(r => r.userId))
+
+  return allUsers.map(u => ({
+    ...u,
+    projectCount: projMap[u.id] ?? 0,
+    openTaskCount: taskMap[u.id] ?? 0,
+    hasCommission: commSet.has(u.id),
+  }))
 }
 
 export async function getUser(id: string) {

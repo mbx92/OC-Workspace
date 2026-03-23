@@ -173,10 +173,13 @@
                     </td>
                     <td class="uppercase text-sm text-base-content/75">{{ document.documentType }}</td>
                     <td><span class="badge badge-outline" :class="documentStatusClass(document.status)">{{ document.status }}</span></td>
-                    <td>-</td>
+                    <td class="text-sm text-base-content/75">
+                      <span v-if="(document as any).latestVersion">v{{ (document as any).latestVersion }}</span>
+                      <span v-else class="text-base-content/40">—</span>
+                    </td>
                     <td class="text-sm text-base-content/75">PDF</td>
                     <td>
-                      <div class="font-medium text-base-content">{{ document.ownerId?.slice(0, 8) }}</div>
+                      <div class="font-medium text-base-content">{{ (document as any).ownerName || document.ownerId?.slice(0, 8) || '—' }}</div>
                       <div class="text-xs text-base-content/50">{{ document.updatedAt?.slice(0, 10) }}</div>
                     </td>
                   </tr>

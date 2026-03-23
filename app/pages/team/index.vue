@@ -85,10 +85,10 @@
                     <div class="text-xs text-base-content/50">{{ member.email }}</div>
                   </td>
                   <td class="text-sm text-base-content/75">{{ member.role }}</td>
-                  <td class="text-sm text-base-content/75">—</td>
-                  <td class="text-sm text-base-content/75">—</td>
+                  <td class="text-sm text-base-content/75">{{ (member as any).projectCount ?? '—' }}</td>
+                  <td class="text-sm text-base-content/75">{{ (member as any).openTaskCount ?? '—' }}</td>
                   <td>
-                    <span class="badge badge-outline badge-neutral">—</span>
+                    <span class="badge badge-outline" :class="(member as any).hasCommission ? 'badge-success' : 'badge-neutral'">{{ (member as any).hasCommission ? 'Yes' : '—' }}</span>
                   </td>
                   <td>
                     <span class="badge badge-outline" :class="member.isActive ? 'badge-success' : 'badge-neutral'">{{ member.isActive ? 'Active' : 'Inactive' }}</span>
@@ -222,16 +222,19 @@ const teamStats = computed(() => {
   return {
     activeMembers: members.filter((m: any) => m.isActive).length,
     inactiveMembers: members.filter((m: any) => !m.isActive).length,
-    activeAssignments: 0,
-    multiProjectMembers: 0,
-    openTasks: 0,
-    overloadedMembers: 0,
-    commissionEligible: members.length,
+    activeAssignments: members.reduce((sum: number, m: any) => sum + (m.projectCount ?? 0), 0),
+    multiProjectMembers: members.filter((m: any) => (m.projectCount ?? 0) > 1).length,
+    openTasks: members.reduce((sum: number, m: any) => sum + (m.openTaskCount ?? 0), 0),
+    overloadedMembers: members.filter((m: any) => (m.openTaskCount ?? 0) > 5).length,
+    commissionEligible: members.filter((m: any) => (m as any).hasCommission).length,
   }
 })
 
 const workloadMembers = computed(() =>
-  (teamMembers.value ?? []).filter((m: any) => m.isActive),
+  (teamMembers.value ?? [])
+    .filter((m: any) => m.isActive && (m.openTaskCount ?? 0) > 0)
+    .map((m: any) => ({ name: m.name, openTasks: m.openTaskCount ?? 0 }))
+    .sort((a: any, b: any) => b.openTasks - a.openTasks),
 )
 
 const workloadMax = computed(() => {
@@ -245,7 +248,11 @@ const roleCoverage = computed(() =>
     .sort((a, b) => b.count - a.count),
 )
 
-const overloadAlert = computed(() => '')
+const overloadAlert = computed(() => {
+  const overloaded = (teamMembers.value ?? []).filter((m: any) => (m.openTaskCount ?? 0) > 5)
+  if (!overloaded.length) return ''
+  return `${overloaded.length} member(s) have more than 5 open tasks: ${overloaded.map((m: any) => m.name).join(', ')}.`
+})
 
 function showMessage(type: 'success' | 'error', text: string) {
   message.value = { type, text }

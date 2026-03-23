@@ -138,6 +138,29 @@
           <span class="text-sm font-medium text-base-content">Notes</span>
           <textarea v-model="draft.notes" class="textarea textarea-bordered w-full" placeholder="Optional notes" />
         </label>
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Contract Value</span>
+            <span class="text-xs text-base-content/60">Total contract value used for P&amp;L calculations. Enter the full amount in whole units.</span>
+            <input
+              :value="draft.contractValueInput"
+              type="text"
+              inputmode="numeric"
+              class="input input-bordered w-full"
+              placeholder="e.g. 50,000,000"
+              @input="draft.contractValueInput = formatNumberInput(($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Currency</span>
+            <span class="text-xs text-base-content/60">Currency code for this project's billing.</span>
+            <select v-model="draft.currency" class="select select-bordered w-full">
+              <option value="IDR">IDR</option>
+              <option value="USD">USD</option>
+              <option value="SGD">SGD</option>
+            </select>
+          </label>
+        </div>
       </fieldset>
 
       <template #actions>
@@ -186,6 +209,28 @@
           <span class="text-sm font-medium text-base-content">Notes</span>
           <textarea v-model="editDraft.notes" class="textarea textarea-bordered w-full" placeholder="Optional notes" />
         </label>
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Contract Value</span>
+            <span class="text-xs text-base-content/60">Total contract value used for P&amp;L calculations.</span>
+            <input
+              :value="editDraft.contractValueInput"
+              type="text"
+              inputmode="numeric"
+              class="input input-bordered w-full"
+              placeholder="e.g. 50,000,000"
+              @input="editDraft.contractValueInput = formatNumberInput(($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-base-content">Currency</span>
+            <select v-model="editDraft.currency" class="select select-bordered w-full">
+              <option value="IDR">IDR</option>
+              <option value="USD">USD</option>
+              <option value="SGD">SGD</option>
+            </select>
+          </label>
+        </div>
       </fieldset>
 
       <template #actions>
@@ -198,6 +243,8 @@
 
 <script setup lang="ts">
 definePageMeta({ layout: 'default' })
+
+const { formatNumberInput, parseNumericInput } = useAppFormatting()
 
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -233,6 +280,8 @@ const draft = reactive({
   status: 'planning',
   deadline: '',
   notes: '',
+  contractValueInput: '',
+  currency: 'IDR',
 })
 
 function closeCreateProjectModal() {
@@ -255,6 +304,8 @@ async function createProject() {
         status: draft.status,
         deadline: draft.deadline || undefined,
         notes: draft.notes.trim() || undefined,
+        contractValue: parseNumericInput(draft.contractValueInput) || undefined,
+        currency: draft.currency,
       },
     })
     message.value = { type: 'success', text: `${draft.name.trim()} saved to the project portfolio.` }
@@ -264,6 +315,8 @@ async function createProject() {
     draft.status = 'planning'
     draft.deadline = ''
     draft.notes = ''
+    draft.contractValueInput = ''
+    draft.currency = 'IDR'
     closeCreateProjectModal()
     refresh()
   } catch (e: any) {
@@ -281,6 +334,8 @@ const editDraft = reactive({
   status: 'planning',
   deadline: '',
   notes: '',
+  contractValueInput: '',
+  currency: 'IDR',
 })
 
 function openEditModal(project: any) {
@@ -291,6 +346,8 @@ function openEditModal(project: any) {
   editDraft.status = project.status || 'planning'
   editDraft.deadline = project.deadline ? project.deadline.slice(0, 10) : ''
   editDraft.notes = project.notes || ''
+  editDraft.contractValueInput = project.contractValue ? formatNumberInput(project.contractValue) : ''
+  editDraft.currency = project.currency || 'IDR'
   isEditProjectModalOpen.value = true
 }
 
@@ -313,6 +370,8 @@ async function saveEditProject() {
         status: editDraft.status,
         deadline: editDraft.deadline || undefined,
         notes: editDraft.notes.trim() || undefined,
+        contractValue: parseNumericInput(editDraft.contractValueInput) || undefined,
+        currency: editDraft.currency,
       },
     })
     message.value = { type: 'success', text: `${editDraft.name.trim()} updated.` }

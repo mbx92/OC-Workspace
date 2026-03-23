@@ -34,6 +34,8 @@ export async function createProject(
     name: string
     clientName?: string | null
     status?: string
+    contractValue?: number | null
+    currency?: string
     startDate?: string | null
     deadline?: string | null
     notes?: string | null
@@ -47,6 +49,8 @@ export async function createProject(
       name: data.name,
       clientName: data.clientName,
       status: (data.status as any) ?? 'planning',
+      contractValue: data.contractValue ?? null,
+      currency: data.currency ?? 'IDR',
       startDate: data.startDate,
       deadline: data.deadline,
       notes: data.notes,

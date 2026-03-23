@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   date,
+  integer,
   pgEnum,
 } from 'drizzle-orm/pg-core'
 import { users } from './users'
@@ -23,6 +24,8 @@ export const projects = pgTable('projects', {
   name: varchar('name', { length: 255 }).notNull(),
   clientName: varchar('client_name', { length: 255 }),
   status: projectStatusEnum('status').notNull().default('planning'),
+  contractValue: integer('contract_value'), // smallest currency unit (e.g. IDR cents)
+  currency: varchar('currency', { length: 3 }).notNull().default('IDR'),
   startDate: date('start_date'),
   deadline: date('deadline'),
   notes: text('notes'),

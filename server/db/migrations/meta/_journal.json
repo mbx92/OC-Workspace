@@ -8,6 +8,34 @@
       "when": 1774143807787,
       "tag": "0000_exotic_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774185835689,
+      "tag": "0001_needy_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1742688000000,
+      "tag": "0002_integration_api_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774241020844,
+      "tag": "0003_ambiguous_silk_fever",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774241895073,
+      "tag": "0004_awesome_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { db } from '../db/client'
 import { budgetPlans, budgetEntries, commissionRules, commissions } from '../db/schema'
+import { projects } from '../db/schema'
 import { eq, desc, and, sql } from 'drizzle-orm'
 
 // ==================== BUDGET PLANS ====================
@@ -117,6 +118,52 @@ export async function getBudgetSummary(projectId: string) {
     remaining,
     variancePercent: Math.round(variance * 100) / 100,
     isOverBudget: remaining < 0,
+  }
+}
+
+export async function getProjectPnL(projectId: string) {
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1)
+  if (!project) throw createError({ statusCode: 404, statusMessage: 'Project not found' })
+
+  const entries = await listBudgetEntries(projectId)
+  const projectCommissions = await listCommissions({ projectId })
+
+  const revenue = project.contractValue ?? 0
+  const totalExpenses = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
+  const totalAdjustments = entries.filter(e => e.type === 'adjustment').reduce((sum, e) => sum + e.amount, 0)
+  const netExpenses = totalExpenses - totalAdjustments
+
+  const totalCommissions = projectCommissions
+    .filter(c => c.status === 'paid' || c.status === 'approved')
+    .reduce((sum, c) => sum + (c.commissionAmount ?? 0), 0)
+  const paidCommissions = projectCommissions
+    .filter(c => c.status === 'paid')
+    .reduce((sum, c) => sum + (c.commissionAmount ?? 0), 0)
+
+  const grossProfit = revenue - netExpenses
+  const netProfit = revenue - netExpenses - totalCommissions
+  const margin = revenue > 0 ? Math.round((netProfit / revenue) * 10000) / 100 : null
+
+  // Expense breakdown by category
+  const byCategory: Record<string, number> = {}
+  for (const e of entries.filter(e => e.type === 'expense')) {
+    byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount
+  }
+
+  return {
+    projectId,
+    projectName: project.name,
+    currency: project.currency,
+    revenue,
+    totalExpenses: netExpenses,
+    totalCommissions,
+    paidCommissions,
+    grossProfit,
+    netProfit,
+    marginPercent: margin,
+    isProfit: netProfit >= 0,
+    expenseByCategory: byCategory,
+    hasContractValue: revenue > 0,
   }
 }
 

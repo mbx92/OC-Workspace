@@ -8,7 +8,7 @@ async function seed() {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
   const db = drizzle(pool, { schema })
 
-  const email = process.env.AUTH_EMAIL ?? 'admin@moneyman.com'
+  const email = process.env.AUTH_EMAIL ?? 'admin@ocdev.com'
   const password = process.env.AUTH_PASSWORD ?? 'admin123'
   const name = 'Owner'
 
