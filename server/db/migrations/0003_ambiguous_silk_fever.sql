@@ -12,7 +12,6 @@ CREATE TABLE "integration_webhook_deliveries" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "integration_connections" ADD COLUMN "api_key_hash" varchar(255);--> statement-breakpoint
 ALTER TABLE "integration_connections" ADD COLUMN "webhook_enabled" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "integration_connections" ADD COLUMN "webhook_path" varchar(500);--> statement-breakpoint
 ALTER TABLE "integration_connections" ADD COLUMN "webhook_secret" varchar(255);--> statement-breakpoint
