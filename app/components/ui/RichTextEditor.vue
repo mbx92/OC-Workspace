@@ -4,112 +4,136 @@
       <div class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200/50 px-3 py-2">
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('paragraph'))"
           :disabled="!editor"
+          title="Paragraph"
+          aria-label="Paragraph"
           @click="editor?.chain().focus().setParagraph().run()"
         >
-          Text
+          <IconPilcrow class="h-4 w-4" />
         </button>
         <button
           v-for="level in headingLevels"
           :key="level"
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('heading', { level }))"
           :disabled="!editor"
+          :title="headingLabels[level]"
+          :aria-label="headingLabels[level]"
           @click="editor?.chain().focus().toggleHeading({ level }).run()"
         >
-          H{{ level }}
+          <component :is="headingIcons[level]" class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('bold'))"
           :disabled="!editor"
+          title="Bold"
+          aria-label="Bold"
           @click="editor?.chain().focus().toggleBold().run()"
         >
-          Bold
+          <IconBold class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('italic'))"
           :disabled="!editor"
+          title="Italic"
+          aria-label="Italic"
           @click="editor?.chain().focus().toggleItalic().run()"
         >
-          Italic
+          <IconItalic class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('underline'))"
           :disabled="!editor"
+          title="Underline"
+          aria-label="Underline"
           @click="editor?.chain().focus().toggleUnderline().run()"
         >
-          Underline
+          <IconUnderline class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('strike'))"
           :disabled="!editor"
+          title="Strikethrough"
+          aria-label="Strikethrough"
           @click="editor?.chain().focus().toggleStrike().run()"
         >
-          Strike
+          <IconStrikethrough class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('subscript'))"
           :disabled="!editor"
+          title="Subscript"
+          aria-label="Subscript"
           @click="editor?.chain().focus().toggleSubscript().run()"
         >
-          Sub
+          <IconSubscript class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('superscript'))"
           :disabled="!editor"
+          title="Superscript"
+          aria-label="Superscript"
           @click="editor?.chain().focus().toggleSuperscript().run()"
         >
-          Sup
+          <IconSuperscript class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('code'))"
           :disabled="!editor"
+          title="Inline code"
+          aria-label="Inline code"
           @click="editor?.chain().focus().toggleCode().run()"
         >
-          Code
+          <IconCode class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('highlight'))"
           :disabled="!editor"
+          title="Highlight"
+          aria-label="Highlight"
           @click="toggleHighlight()"
         >
-          Mark
+          <IconHighlight class="h-4 w-4" />
         </button>
         <div class="ml-auto flex items-center gap-2">
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :disabled="!editor"
+            title="Undo"
+            aria-label="Undo"
             @click="editor?.chain().focus().undo().run()"
           >
-            Undo
+            <IconArrowBackUp class="h-4 w-4" />
           </button>
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :disabled="!editor"
+            title="Redo"
+            aria-label="Redo"
             @click="editor?.chain().focus().redo().run()"
           >
-            Redo
+            <IconArrowForwardUp class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -117,113 +141,135 @@
       <div class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-100 px-3 py-2">
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('bulletList'))"
           :disabled="!editor"
+          title="Bullet list"
+          aria-label="Bullet list"
           @click="editor?.chain().focus().toggleBulletList().run()"
         >
-          Bullets
+          <IconList class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('orderedList'))"
           :disabled="!editor"
+          title="Numbered list"
+          aria-label="Numbered list"
           @click="editor?.chain().focus().toggleOrderedList().run()"
         >
-          Numbered
+          <IconListNumbers class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('taskList'))"
           :disabled="!editor"
+          title="Checklist"
+          aria-label="Checklist"
           @click="editor?.chain().focus().toggleTaskList().run()"
         >
-          Checklist
+          <IconListCheck class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('blockquote'))"
           :disabled="!editor"
+          title="Blockquote"
+          aria-label="Blockquote"
           @click="editor?.chain().focus().toggleBlockquote().run()"
         >
-          Quote
+          <IconBlockquote class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive('codeBlock'))"
           :disabled="!editor"
+          title="Code block"
+          aria-label="Code block"
           @click="editor?.chain().focus().toggleCodeBlock().run()"
         >
-          Code Block
+          <IconCodeblock class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :disabled="!editor"
+          title="Divider"
+          aria-label="Divider"
           @click="editor?.chain().focus().setHorizontalRule().run()"
         >
-          Divider
+          <IconSeparatorHorizontal class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive({ textAlign: 'left' }))"
           :disabled="!editor"
+          title="Align left"
+          aria-label="Align left"
           @click="editor?.chain().focus().setTextAlign('left').run()"
         >
-          Left
+          <IconAlignLeft class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive({ textAlign: 'center' }))"
           :disabled="!editor"
+          title="Align center"
+          aria-label="Align center"
           @click="editor?.chain().focus().setTextAlign('center').run()"
         >
-          Center
+          <IconAlignCenter class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive({ textAlign: 'right' }))"
           :disabled="!editor"
+          title="Align right"
+          aria-label="Align right"
           @click="editor?.chain().focus().setTextAlign('right').run()"
         >
-          Right
+          <IconAlignRight class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :class="toolbarButtonClass(editor?.isActive({ textAlign: 'justify' }))"
           :disabled="!editor"
+          title="Justify"
+          aria-label="Justify"
           @click="editor?.chain().focus().setTextAlign('justify').run()"
         >
-          Justify
+          <IconAlignJustified class="h-4 w-4" />
         </button>
         <button
           type="button"
-          class="btn btn-ghost btn-xs"
+          class="btn btn-ghost btn-xs btn-square"
           :disabled="!editor"
+          title="Clear formatting"
+          aria-label="Clear formatting"
           @click="clearFormatting"
         >
-          Clear
+          <IconClearFormatting class="h-4 w-4" />
         </button>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-100 px-3 py-2">
         <label class="flex items-center gap-2 text-xs text-base-content/60">
-          <span>Text color</span>
+          <IconTextColor class="h-4 w-4" />
           <select v-model="selectedTextColor" class="select select-bordered select-xs min-w-28" :disabled="!editor" @change="applyTextColor(selectedTextColor)">
             <option value="">Default</option>
             <option v-for="option in textColorOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
           </select>
         </label>
         <label class="flex items-center gap-2 text-xs text-base-content/60">
-          <span>Highlight</span>
+          <IconHighlight class="h-4 w-4" />
           <select v-model="selectedHighlightColor" class="select select-bordered select-xs min-w-28" :disabled="!editor" @change="applyHighlightColor(selectedHighlightColor)">
             <option value="">Off</option>
             <option value="default">Default</option>
@@ -241,55 +287,63 @@
           >
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :class="toolbarButtonClass(editor?.isActive('link'))"
             :disabled="!editor"
+            title="Apply link"
+            aria-label="Apply link"
             @click="applyLink"
           >
-            Link
+            <IconLink class="h-4 w-4" />
           </button>
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :disabled="!editor"
+            title="Remove link"
+            aria-label="Remove link"
             @click="removeLink"
           >
-            Unlink
+            <IconUnlink class="h-4 w-4" />
           </button>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :class="toolbarButtonClass(editor?.isActive('table'))"
             :disabled="!editor"
+            title="Insert table"
+            aria-label="Insert table"
             @click="insertTable"
           >
-            Table
+            <IconTable class="h-4 w-4" />
           </button>
           <button
             type="button"
-            class="btn btn-ghost btn-xs"
+            class="btn btn-ghost btn-xs btn-square"
             :disabled="!editor"
+            title="Line break"
+            aria-label="Line break"
             @click="editor?.chain().focus().setHardBreak().run()"
           >
-            Line Break
+            <IconPageBreak class="h-4 w-4" />
           </button>
         </div>
       </div>
 
       <div v-if="isTableActive" class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-200/30 px-3 py-2">
         <span class="text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/45">Table</span>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().toggleHeaderRow().run()">Header row</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().toggleHeaderColumn().run()">Header column</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().addRowBefore().run()">Row before</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().addRowAfter().run()">Row after</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().deleteRow().run()">Delete row</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().addColumnBefore().run()">Column before</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().addColumnAfter().run()">Column after</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().deleteColumn().run()">Delete column</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="toggleTableMergeSplit">Merge / Split</button>
-        <button type="button" class="btn btn-ghost btn-xs" :disabled="!editor" @click="editor?.chain().focus().deleteTable().run()">Delete table</button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Toggle header row" aria-label="Toggle header row" @click="editor?.chain().focus().toggleHeaderRow().run()"><IconTableRow class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Toggle header column" aria-label="Toggle header column" @click="editor?.chain().focus().toggleHeaderColumn().run()"><IconTableColumn class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Insert row above" aria-label="Insert row above" @click="editor?.chain().focus().addRowBefore().run()"><IconRowInsertTop class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Insert row below" aria-label="Insert row below" @click="editor?.chain().focus().addRowAfter().run()"><IconRowInsertBottom class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Delete row" aria-label="Delete row" @click="editor?.chain().focus().deleteRow().run()"><IconRowRemove class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Insert column left" aria-label="Insert column left" @click="editor?.chain().focus().addColumnBefore().run()"><IconColumnInsertLeft class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Insert column right" aria-label="Insert column right" @click="editor?.chain().focus().addColumnAfter().run()"><IconColumnInsertRight class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Delete column" aria-label="Delete column" @click="editor?.chain().focus().deleteColumn().run()"><IconColumnRemove class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" :title="editor?.can().splitCell() ? 'Split cell' : 'Merge cells'" :aria-label="editor?.can().splitCell() ? 'Split cell' : 'Merge cells'" @click="toggleTableMergeSplit"><component :is="editor?.can().splitCell() ? IconArrowsSplit2 : IconArrowsJoin2" class="h-4 w-4" /></button>
+        <button type="button" class="btn btn-ghost btn-xs btn-square" :disabled="!editor" title="Delete table" aria-label="Delete table" @click="editor?.chain().focus().deleteTable().run()"><IconTableMinus class="h-4 w-4" /></button>
       </div>
 
       <div v-if="mergeFields.length" class="flex flex-wrap items-center gap-2 border-b border-base-300 bg-base-100 px-3 py-2">
@@ -324,6 +378,50 @@
 </template>
 
 <script setup lang="ts">
+import {
+  IconAlignCenter,
+  IconAlignJustified,
+  IconAlignLeft,
+  IconAlignRight,
+  IconArrowBackUp,
+  IconArrowForwardUp,
+  IconArrowsJoin2,
+  IconArrowsSplit2,
+  IconBlockquote,
+  IconBold,
+  IconClearFormatting,
+  IconCode,
+  IconCodeblock,
+  IconColumnInsertLeft,
+  IconColumnInsertRight,
+  IconColumnRemove,
+  IconH1,
+  IconH2,
+  IconH3,
+  IconH4,
+  IconHighlight,
+  IconItalic,
+  IconLink,
+  IconList,
+  IconListCheck,
+  IconListNumbers,
+  IconPageBreak,
+  IconPilcrow,
+  IconRowInsertBottom,
+  IconRowInsertTop,
+  IconRowRemove,
+  IconSeparatorHorizontal,
+  IconStrikethrough,
+  IconSubscript,
+  IconSuperscript,
+  IconTable,
+  IconTableColumn,
+  IconTableMinus,
+  IconTableRow,
+  IconTextColor,
+  IconUnderline,
+  IconUnlink,
+} from '@tabler/icons-vue'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import Link from '@tiptap/extension-link'
@@ -345,6 +443,20 @@ type ToolbarColorOption = {
 }
 
 const headingLevels = [1, 2, 3, 4] as const
+
+const headingIcons = {
+  1: IconH1,
+  2: IconH2,
+  3: IconH3,
+  4: IconH4,
+} as const
+
+const headingLabels = {
+  1: 'Heading 1',
+  2: 'Heading 2',
+  3: 'Heading 3',
+  4: 'Heading 4',
+} as const
 
 const textColorOptions: ToolbarColorOption[] = [
   { label: 'Forest', value: '#25523b' },

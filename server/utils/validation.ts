@@ -169,6 +169,49 @@ export const createLegalDocVersionSchema = z.object({
   renderedHtml: z.string().nullish(),
 })
 
+const legalAiFieldSchema = z.object({
+  key: z.string().min(1).max(100),
+  label: z.string().min(1).max(255),
+  description: z.string().max(1000).nullish(),
+  input: z.enum(['text', 'date', 'number', 'richtext']),
+})
+
+export const legalAiAssistSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('template'),
+    projectId: z.string().uuid().nullish(),
+    action: z.enum(['generate', 'improve']),
+    documentType: z.enum(['quotation', 'proposal', 'agreement']),
+    templateName: z.string().max(255).nullish(),
+    currentHtml: z.string().nullish(),
+    instructions: z.string().max(4000).nullish(),
+    mergeFields: z.array(legalAiFieldSchema).default([]),
+  }),
+  z.object({
+    mode: z.literal('document'),
+    projectId: z.string().uuid().nullish(),
+    action: z.literal('suggest-values'),
+    documentType: z.enum(['quotation', 'proposal', 'agreement']),
+    documentTitle: z.string().max(500).nullish(),
+    templateName: z.string().max(255).nullish(),
+    projectName: z.string().max(255).nullish(),
+    clientName: z.string().max(255).nullish(),
+    currentHtml: z.string().nullish(),
+    instructions: z.string().max(4000).nullish(),
+    mergeFields: z.array(legalAiFieldSchema).min(1),
+  }),
+  z.object({
+    mode: z.literal('workspace'),
+    projectId: z.string().uuid().nullish(),
+    action: z.literal('generate-section'),
+    section: z.enum(['proposal', 'quotation', 'agreement']),
+    projectName: z.string().max(255).nullish(),
+    clientName: z.string().max(255).nullish(),
+    instructions: z.string().max(4000).nullish(),
+    currentData: z.any().nullish(),
+  }),
+])
+
 // --- Project Licenses ---
 export const createLicenseSchema = z.object({
   projectId: z.string().uuid(),

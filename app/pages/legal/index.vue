@@ -11,6 +11,10 @@
 
       <div class="flex flex-wrap gap-2">
         <button class="btn btn-ghost btn-sm">Export register</button>
+        <button class="btn btn-secondary btn-sm gap-2" @click="openAiGenerateModal">
+          <IconSparkles class="h-4 w-4" />
+          <span>Generate AI</span>
+        </button>
         <button class="btn btn-outline btn-sm" @click="openTemplateModal">Add template</button>
         <button class="btn btn-primary btn-sm" @click="openDocumentModal">Create document</button>
       </div>
@@ -253,6 +257,36 @@
             <input v-model="templateDraft.templateFormat" type="text" class="input input-bordered w-full" placeholder="html" />
           </div>
 
+          <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 class="card-title text-base">AI Draft Assist</h3>
+                  <p class="text-sm text-base-content/60">Gunakan Gemini untuk membuat draft template baru atau merapikan isi yang sudah ada.</p>
+                </div>
+                <span class="badge badge-outline">Gemini</span>
+              </div>
+              <textarea
+                v-model="templateAiPrompt"
+                class="textarea textarea-bordered min-h-28 w-full"
+                placeholder="Contoh: Buat template proposal software development dalam Bahasa Indonesia yang formal, fokus pada scope, timeline, deliverables, dan ketentuan revisi."
+              />
+              <div class="alert alert-soft alert-info text-sm">
+                AI hanya membantu menyusun draft. Tetap review isi legal sebelum disimpan atau dikirim.
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline btn-sm" :disabled="isTemplateAiLoading" @click="assistTemplateWithAi('generate')">
+                  <IconSparkles class="h-4 w-4" />
+                  {{ isTemplateAiLoading ? 'Generating...' : 'Generate Template' }}
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" :disabled="isTemplateAiLoading" @click="assistTemplateWithAi('improve')">
+                  <IconSparkles class="h-4 w-4" />
+                  {{ isTemplateAiLoading ? 'Refining...' : 'Improve Current Draft' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <fieldset class="fieldset rounded-box border border-base-300 p-4">
             <legend class="fieldset-legend px-2">Template Content</legend>
             <UiRichTextEditor
@@ -329,6 +363,33 @@
             </select>
           </div>
 
+          <div class="card border border-base-300 bg-base-100 shadow-sm">
+            <div class="card-body gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 class="card-title text-base">AI Field Suggestions</h3>
+                  <p class="text-sm text-base-content/60">Minta Gemini mengisi draft nilai merge field berdasarkan template, project, dan client yang dipilih.</p>
+                </div>
+                <span class="badge badge-outline">Gemini</span>
+              </div>
+              <textarea
+                v-model="documentAiPrompt"
+                class="textarea textarea-bordered min-h-24 w-full"
+                placeholder="Contoh: Gunakan gaya bahasa proposal enterprise. Sorot manfaat bisnis, tahapan delivery, dan ekspektasi kolaborasi dengan klien."
+              />
+              <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
+                <span class="badge badge-ghost">{{ selectedTemplatePlaceholders.length }} field(s)</span>
+                <span v-if="selectedTemplate">Template: {{ (selectedTemplate as any).name }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline btn-sm" :disabled="isDocumentAiLoading || !selectedTemplatePlaceholders.length" @click="assistDocumentWithAi">
+                  <IconSparkles class="h-4 w-4" />
+                  {{ isDocumentAiLoading ? 'Drafting...' : 'Suggest Merge Values' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <fieldset v-if="selectedTemplatePlaceholders.length" class="fieldset rounded-box border border-base-300 p-4">
             <legend class="fieldset-legend px-2">Template Merge Fields</legend>
             <div class="grid gap-4">
@@ -393,6 +454,7 @@ import {
   IconFileText,
   IconHistory,
   IconScale,
+  IconSparkles,
   IconTemplate,
 } from '@tabler/icons-vue'
 import {
@@ -446,6 +508,10 @@ const documentDraft = reactive({
 })
 
 const documentMergeValues = reactive<Record<string, string>>({})
+const templateAiPrompt = ref('')
+const documentAiPrompt = ref('')
+const isTemplateAiLoading = ref(false)
+const isDocumentAiLoading = ref(false)
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -458,6 +524,17 @@ const selectedTemplate = computed(() => templates.value.find((template: any) => 
 const selectedTemplateContent = computed(() => normalizeLegalTemplateContent((selectedTemplate.value as any)?.contentJson))
 
 const selectedTemplatePlaceholders = computed(() => selectedTemplateContent.value.placeholders)
+
+const documentAiFields = computed(() => selectedTemplatePlaceholders.value.map((key) => {
+  const definition = resolveDocumentFieldMeta(key)
+
+  return {
+    key,
+    label: definition.label,
+    description: definition.description,
+    input: definition.input as 'text' | 'date' | 'number' | 'richtext',
+  }
+}))
 
 const templateFieldCatalog = computed(() => getLegalTemplateFieldCatalog(templateDraft.documentType))
 
@@ -534,7 +611,18 @@ function openTemplateModal() {
   templateDraft.documentType = 'proposal'
   templateDraft.templateFormat = 'html'
   templateDraft.contentHtml = defaultTemplateContent('proposal')
+  templateAiPrompt.value = ''
   activeModal.value = 'template'
+}
+
+function openAiGenerateModal() {
+  openTemplateModal()
+  nextTick(() => {
+    const prompt = templateAiPrompt.value.trim()
+    if (!prompt) {
+      templateAiPrompt.value = 'Buat draft template legal yang rapi, formal, dan siap direview untuk kebutuhan bisnis software.'
+    }
+  })
 }
 
 function openDocumentModal() {
@@ -545,6 +633,7 @@ function openDocumentModal() {
     documentDraft.templateId = firstTemplate.id
     documentDraft.documentType = firstTemplate.documentType ?? 'proposal'
   }
+  documentAiPrompt.value = ''
   activeModal.value = 'document'
 }
 
@@ -555,6 +644,7 @@ function editTemplate(template: any) {
   templateDraft.documentType = template.documentType ?? 'proposal'
   templateDraft.templateFormat = template.templateFormat ?? 'html'
   templateDraft.contentHtml = normalizeLegalTemplateContent(template.contentJson).html
+  templateAiPrompt.value = ''
   activeModal.value = 'template'
 }
 
@@ -667,6 +757,88 @@ function syncDocumentMergeValues() {
     if (isSystemField || !documentMergeValues[key]) {
       documentMergeValues[key] = nextValue
     }
+  }
+}
+
+async function assistTemplateWithAi(action: 'generate' | 'improve') {
+  if (action === 'improve' && !templateDraft.contentHtml.trim()) {
+    showMessage('error', 'Current template content is empty. Generate a draft first or write some content to improve.')
+    return
+  }
+
+  isTemplateAiLoading.value = true
+
+  try {
+    const response = await $fetch('/api/legal/assist', {
+      method: 'POST',
+      body: {
+        mode: 'template',
+        projectId: undefined,
+        action,
+        documentType: templateDraft.documentType,
+        templateName: templateDraft.name.trim() || `${templateDraft.documentType} template`,
+        currentHtml: templateDraft.contentHtml || undefined,
+        instructions: templateAiPrompt.value.trim() || undefined,
+        mergeFields: templateFieldCatalog.value.map(field => ({
+          key: field.key,
+          label: field.label,
+          description: field.description,
+          input: field.input,
+        })),
+      },
+    }) as { html?: string; model?: string }
+
+    if (!response.html?.trim()) {
+      throw new Error('AI returned an empty draft.')
+    }
+
+    templateDraft.contentHtml = response.html
+    showMessage('success', `AI template draft ready${response.model ? ` via ${response.model}` : ''}. Review before saving.`)
+  } catch (err: any) {
+    showMessage('error', err?.data?.statusMessage || err?.message || 'Failed to generate template with AI.')
+  } finally {
+    isTemplateAiLoading.value = false
+  }
+}
+
+async function assistDocumentWithAi() {
+  if (!selectedTemplatePlaceholders.value.length) {
+    showMessage('error', 'Select a template with merge fields before asking AI for suggestions.')
+    return
+  }
+
+  isDocumentAiLoading.value = true
+
+  try {
+    const response = await $fetch('/api/legal/assist', {
+      method: 'POST',
+      body: {
+        mode: 'document',
+        projectId: documentDraft.projectId || undefined,
+        action: 'suggest-values',
+        documentType: documentDraft.documentType,
+        documentTitle: documentDraft.title.trim() || undefined,
+        templateName: (selectedTemplate.value as any)?.name || undefined,
+        projectName: selectedProject.value?.name || undefined,
+        clientName: documentDraft.clientName.trim() || undefined,
+        currentHtml: selectedTemplateContent.value.html || undefined,
+        instructions: documentAiPrompt.value.trim() || undefined,
+        mergeFields: documentAiFields.value,
+      },
+    }) as { values?: Record<string, string>; model?: string }
+
+    const nextValues = response.values || {}
+    for (const fieldKey of selectedTemplatePlaceholders.value) {
+      if (typeof nextValues[fieldKey] === 'string' && nextValues[fieldKey].trim()) {
+        documentMergeValues[fieldKey] = nextValues[fieldKey]
+      }
+    }
+
+    showMessage('success', `AI field suggestions applied${response.model ? ` via ${response.model}` : ''}. Review before saving.`)
+  } catch (err: any) {
+    showMessage('error', err?.data?.statusMessage || err?.message || 'Failed to draft document values with AI.')
+  } finally {
+    isDocumentAiLoading.value = false
   }
 }
 

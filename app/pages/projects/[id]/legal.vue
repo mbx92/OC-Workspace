@@ -15,11 +15,17 @@
         <h1 class="text-2xl font-bold">{{ currentProject.name }}</h1>
         <p class="text-sm text-base-content/50 mt-0.5">Kelola dokumen proposal, penawaran, dan agreement yang terhubung ke project ini.</p>
       </div>
-      <button class="btn btn-primary btn-sm gap-2" @click="saveDocuments" :disabled="isSaving">
-        <IconDeviceFloppy class="w-4 h-4"/>
-        <span v-if="isSaving">Menyimpan...</span>
-        <span v-else>Simpan Dokumen</span>
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="btn btn-secondary btn-sm gap-2" @click="openAiWorkspaceModal">
+          <IconSparkles class="w-4 h-4"/>
+          <span>Generate AI</span>
+        </button>
+        <button class="btn btn-primary btn-sm gap-2" @click="saveDocuments" :disabled="isSaving">
+          <IconDeviceFloppy class="w-4 h-4"/>
+          <span v-if="isSaving">Menyimpan...</span>
+          <span v-else>Simpan Dokumen</span>
+        </button>
+      </div>
     </div>
 
     <!-- Alert Banner -->
@@ -194,6 +200,15 @@
             </div>
           </div>
 
+          <div class="form-control w-full">
+            <label class="label"><span class="label-text font-medium">Paragraf Pembuka</span></label>
+            <UiRichTextEditor
+              v-model="docs.penawaran.openingParagraph"
+              placeholder="Paragraf pembuka surat penawaran untuk klien..."
+              min-height="7rem"
+            />
+          </div>
+
           <!-- Item Table -->
           <div>
             <label class="label"><span class="label-text font-medium">Daftar Item Penawaran</span></label>
@@ -214,7 +229,13 @@
                       <input type="text" v-model="item.description" class="input input-bordered input-sm w-full" placeholder="Deskripsi..." />
                     </td>
                     <td>
-                      <input type="number" v-model.number="item.price" class="input input-bordered input-sm w-full text-right font-mono" />
+                      <input
+                        type="text"
+                        inputmode="numeric"
+                        :value="formatNumberInput(item.price)"
+                        class="input input-bordered input-sm w-full text-right font-mono"
+                        @input="onPenawaranItemPriceInput(i, $event)"
+                      />
                     </td>
                     <td>
                       <button class="btn btn-ghost btn-sm btn-square text-error" @click="docs.penawaran.items.splice(i, 1)">
@@ -419,6 +440,7 @@
           <div class="divider"></div>
           <p><strong>Kepada Yth.</strong> {{ docs.penawaran.clientName || '[Nama Klien]' }}</p>
           <p class="text-sm text-base-content/60">Berlaku sampai: {{ docs.penawaran.validUntil || '-' }}</p>
+          <div v-if="docs.penawaran.openingParagraph" class="ocs-legal-richtext mt-4" v-html="renderRichText(docs.penawaran.openingParagraph)" />
           <div class="overflow-x-auto mt-4">
             <table class="table table-sm border">
               <thead><tr class="bg-base-200"><th>#</th><th>Item</th><th class="text-right">Harga</th></tr></thead>
@@ -506,7 +528,13 @@
         </div>
         <div class="form-control w-full">
           <label class="label"><span class="label-text font-medium">Harga (Rp)</span></label>
-          <input type="number" v-model="modalDraft.itemPrice" class="input input-bordered w-full font-mono" />
+          <input
+            type="text"
+            inputmode="numeric"
+            :value="formatNumberInput(modalDraft.itemPrice)"
+            class="input input-bordered w-full font-mono"
+            @input="onModalItemPriceInput($event)"
+          />
         </div>
       </div>
       <template #actions>
@@ -535,6 +563,30 @@
         <button type="button" class="btn btn-primary" :disabled="!modalDraft.clauseTitle.trim()" @click="saveClause">Simpan</button>
       </template>
     </UiWorkspaceModal>
+
+    <UiWorkspaceModal :open="activeModal === 'ai'" title="Generate AI" kicker="Legal Workspace" @close="closeModal">
+      <div class="grid gap-4">
+        <div class="alert alert-soft alert-info text-sm">
+          AI akan membuat draft untuk tab yang sedang aktif: {{ activeTabLabel }}.
+        </div>
+        <div class="form-control w-full">
+          <label class="label"><span class="label-text font-medium">Instruksi AI</span></label>
+          <textarea
+            v-model="modalDraft.aiPrompt"
+            class="textarea textarea-bordered min-h-32 w-full"
+            :placeholder="aiPromptPlaceholder"
+          />
+        </div>
+      </div>
+      <template #actions>
+        <button type="button" class="btn btn-ghost" @click="closeModal">Batal</button>
+        <button type="button" class="btn btn-secondary" :disabled="isAiGenerating" @click="generateWorkspaceWithAi">
+          <IconSparkles class="w-4 h-4"/>
+          <span v-if="isAiGenerating">Generating...</span>
+          <span v-else>Generate {{ activeTabLabel }}</span>
+        </button>
+      </template>
+    </UiWorkspaceModal>
   </div>
 </template>
 
@@ -550,7 +602,10 @@ import {
   IconPlus,
   IconEye,
   IconDownload,
+  IconSparkles,
 } from '@tabler/icons-vue'
+
+const { formatCurrency, formatNumberInput, parseNumericInput } = useAppFormatting()
 
 definePageMeta({ layout: 'default' })
 
@@ -583,6 +638,7 @@ const activeTab = ref('proposal')
 
 const isSaving = ref(false)
 const isDownloadingPdf = ref(false)
+const isAiGenerating = ref(false)
 const alertMessage = ref('')
 const alertType = ref('success')
 
@@ -592,7 +648,22 @@ const modalDraft = reactive({
   itemDesc: '',
   itemPrice: 0,
   clauseTitle: '',
-  clauseContent: ''
+  clauseContent: '',
+  aiPrompt: ''
+})
+
+const activeTabLabel = computed(() => tabs.find(tab => tab.key === activeTab.value)?.label || 'Document')
+
+const aiPromptPlaceholder = computed(() => {
+  if (activeTab.value === 'proposal') {
+    return 'Contoh: Buat proposal software development yang formal, jelas, dan meyakinkan. Fokus pada ringkasan, scope, timeline, dan deliverables.'
+  }
+
+  if (activeTab.value === 'penawaran') {
+    return 'Contoh: Buat draft surat penawaran lengkap dengan item pekerjaan, harga realistis, syarat pembayaran, dan catatan komersial.'
+  }
+
+  return 'Contoh: Buat draft agreement kerja sama software development dengan pasal ruang lingkup, pembayaran, revisi, kerahasiaan, dan hak kekayaan intelektual.'
 })
 
 const closeModal = () => {
@@ -602,6 +673,7 @@ const closeModal = () => {
   modalDraft.itemPrice = 0
   modalDraft.clauseTitle = ''
   modalDraft.clauseContent = ''
+  modalDraft.aiPrompt = ''
 }
 
 const openDeliverableModal = () => {
@@ -628,9 +700,32 @@ const savePenawaranItem = () => {
   closeModal()
 }
 
+const updatePenawaranItemPrice = (index, value) => {
+  const target = docs.penawaran.items[index]
+  if (!target) return
+  target.price = parseNumericInput(value)
+}
+
+const onPenawaranItemPriceInput = (index, event) => {
+  updatePenawaranItemPrice(index, event?.target?.value || '')
+}
+
+const updateModalItemPrice = (value) => {
+  modalDraft.itemPrice = parseNumericInput(value)
+}
+
+const onModalItemPriceInput = (event) => {
+  updateModalItemPrice(event?.target?.value || '')
+}
+
 const openClauseModal = () => {
   closeModal()
   activeModal.value = 'clause'
+}
+
+const openAiWorkspaceModal = () => {
+  closeModal()
+  activeModal.value = 'ai'
 }
 
 const saveClause = () => {
@@ -638,6 +733,121 @@ const saveClause = () => {
     docs.agreement.clauses.push({ title: modalDraft.clauseTitle.trim(), content: modalDraft.clauseContent.trim() })
   }
   closeModal()
+}
+
+const buildWorkspaceAiPayload = () => {
+  if (activeTab.value === 'proposal') {
+    return {
+      section: 'proposal',
+      currentData: {
+        projectName: docs.proposal.projectName,
+        clientName: docs.proposal.clientName,
+        summary: docs.proposal.summary,
+        scope: docs.proposal.scope,
+        timeline: docs.proposal.timeline,
+        deliverables: docs.proposal.deliverables,
+      },
+    }
+  }
+
+  if (activeTab.value === 'penawaran') {
+    return {
+      section: 'quotation',
+      currentData: {
+        number: docs.penawaran.number,
+        clientName: docs.penawaran.clientName,
+        validUntil: docs.penawaran.validUntil,
+        openingParagraph: docs.penawaran.openingParagraph,
+        items: docs.penawaran.items,
+        paymentTerms: docs.penawaran.paymentTerms,
+        notes: docs.penawaran.notes,
+      },
+    }
+  }
+
+  return {
+    section: 'agreement',
+    currentData: {
+      number: docs.agreement.number,
+      effectiveDate: docs.agreement.effectiveDate,
+      endDate: docs.agreement.endDate,
+      partyOne: docs.agreement.partyOne,
+      partyTwo: docs.agreement.partyTwo,
+      clauses: docs.agreement.clauses,
+    },
+  }
+}
+
+const applyWorkspaceAiResult = (data) => {
+  if (activeTab.value === 'proposal') {
+    docs.proposal.projectName = data.projectName || docs.proposal.projectName
+    docs.proposal.clientName = data.clientName || docs.proposal.clientName
+    docs.proposal.summary = data.summary || docs.proposal.summary
+    docs.proposal.scope = data.scope || docs.proposal.scope
+    docs.proposal.timeline = data.timeline || docs.proposal.timeline
+    docs.proposal.deliverables = Array.isArray(data.deliverables) && data.deliverables.length
+      ? data.deliverables
+      : docs.proposal.deliverables
+    return
+  }
+
+  if (activeTab.value === 'penawaran') {
+    docs.penawaran.number = data.number || docs.penawaran.number
+    docs.penawaran.clientName = data.clientName || docs.penawaran.clientName
+    docs.penawaran.validUntil = data.validUntil || docs.penawaran.validUntil
+    docs.penawaran.openingParagraph = data.openingParagraph || docs.penawaran.openingParagraph
+    docs.penawaran.paymentTerms = data.paymentTerms || docs.penawaran.paymentTerms
+    docs.penawaran.notes = data.notes || docs.penawaran.notes
+    docs.penawaran.items = Array.isArray(data.items) && data.items.length
+      ? data.items.map(item => ({ description: item.description || '', price: Number(item.price) || 0 }))
+      : docs.penawaran.items
+    return
+  }
+
+  docs.agreement.number = data.number || docs.agreement.number
+  docs.agreement.effectiveDate = data.effectiveDate || docs.agreement.effectiveDate
+  docs.agreement.endDate = data.endDate || docs.agreement.endDate
+  if (data.partyOne) Object.assign(docs.agreement.partyOne, data.partyOne)
+  if (data.partyTwo) Object.assign(docs.agreement.partyTwo, data.partyTwo)
+  docs.agreement.clauses = Array.isArray(data.clauses) && data.clauses.length
+    ? data.clauses.map(clause => ({ title: clause.title || '', content: clause.content || '' }))
+    : docs.agreement.clauses
+}
+
+const generateWorkspaceWithAi = async () => {
+  isAiGenerating.value = true
+  alertMessage.value = ''
+
+  try {
+    const payload = buildWorkspaceAiPayload()
+    const response = await $fetch('/api/legal/assist', {
+      method: 'POST',
+      body: {
+        mode: 'workspace',
+        projectId,
+        action: 'generate-section',
+        section: payload.section,
+        projectName: currentProject.value.name,
+        clientName: currentProject.value.clientName,
+        instructions: modalDraft.aiPrompt.trim() || undefined,
+        currentData: payload.currentData,
+      },
+    })
+
+    if (!response?.data) {
+      throw new Error('AI did not return any data.')
+    }
+
+    applyWorkspaceAiResult(response.data)
+    alertType.value = 'success'
+    alertMessage.value = `Draft ${activeTabLabel.value} berhasil dibuat dengan AI${response.model ? ` via ${response.model}` : ''}. Review sebelum disimpan.`
+    closeModal()
+  } catch (error) {
+    alertType.value = 'error'
+    alertMessage.value = error?.data?.statusMessage || error?.message || 'Gagal membuat draft AI.'
+  } finally {
+    isAiGenerating.value = false
+  }
 }
 
 const legacyProposalDefaults = {
@@ -694,6 +904,7 @@ const docs = reactive({
     clientName: currentProject.value.clientName,
     validUntil: '',
     status: 'Draft',
+    openingParagraph: 'Bersama surat ini kami menyampaikan penawaran resmi untuk pelaksanaan pekerjaan sesuai kebutuhan project yang telah dibahas. Penawaran ini mencakup ruang lingkup utama, rincian biaya, serta ketentuan komersial yang dapat menjadi dasar persetujuan kerja sama.',
     items: [
       { description: 'Backend API Development', price: 15000000 },
       { description: 'Frontend Integration', price: 10000000 },
@@ -799,9 +1010,6 @@ onMounted(() => { loadFromDB() })
 const totalPenawaran = computed(() =>
   docs.penawaran.items.reduce((sum, item) => sum + (Number(item.price) || 0), 0),
 )
-
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0)
 
 const statusBadge = (status) => {
   const map = {
@@ -1024,6 +1232,13 @@ const generatePenawaranPdf = (pdf, autoTable) => {
   cursorY = addPdfMetaLine(pdf, 'Status', docs.penawaran.status || '-', cursorY)
   cursorY = addPdfMetaLine(pdf, 'Berlaku Sampai', formatHumanDate(docs.penawaran.validUntil), cursorY)
   cursorY += 10
+
+  if (docs.penawaran.openingParagraph) {
+    normalizePdfLines(docs.penawaran.openingParagraph).forEach((line) => {
+      cursorY = addPdfParagraph(pdf, line, cursorY)
+    })
+    cursorY += 4
+  }
 
   autoTable(pdf, {
     startY: cursorY,

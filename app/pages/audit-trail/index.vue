@@ -10,6 +10,7 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
+        <NuxtLink to="/reports/ai-stats" class="btn btn-secondary btn-sm">AI Stats</NuxtLink>
         <NuxtLink to="/reports" class="btn btn-ghost btn-sm">{{ t('common.openReports') }}</NuxtLink>
         <button class="btn btn-outline btn-sm" @click="resetFilters">{{ t('common.resetFilters') }}</button>
       </div>
@@ -196,6 +197,7 @@ function entryRoute(entry: any) {
   if (entry.entityType?.startsWith('budget') || entry.entityType?.startsWith('commission')) return '/finance'
   if (entry.entityType?.startsWith('user')) return '/team'
   if (entry.entityType === 'project') return `/projects/${entry.entityId}`
+  if (entry.entityType === 'legal_ai_assist') return entry.projectId ? `/projects/${entry.projectId}/legal` : '/legal'
   if (entry.entityType?.startsWith('legal_document')) return `/legal/${entry.entityId}`
   if (entry.entityType?.startsWith('integration_connection')) return `/integrations/${entry.entityId}`
   return ''

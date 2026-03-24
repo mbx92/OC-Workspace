@@ -20,6 +20,15 @@ yarn install
 bun install
 ```
 
+Optional AI setup for legal drafting with Gemini:
+
+```bash
+export GEMINI_API_KEY="your-gemini-api-key"
+export GEMINI_MODEL="gemini-2.5-flash"
+```
+
+Without `GEMINI_API_KEY`, the legal AI assist actions will stay unavailable server-side.
+
 ## Development Server
 
 Start the development server on `http://localhost:3000`:
