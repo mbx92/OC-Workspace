@@ -64,27 +64,36 @@
 
             <div class="rounded-box border border-base-300 bg-base-200/30 p-6">
               <div class="mx-auto max-w-3xl rounded-box bg-base-100 px-8 py-10 shadow-sm">
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ document.documentType }}</p>
-                <h3 class="mt-3 text-2xl font-bold text-base-content">{{ document.title }}</h3>
-                <p class="mt-2 text-sm leading-7 text-base-content/70">
-                  {{ previewIntro }}
-                </p>
-
-                <div class="mt-6 grid gap-4 md:grid-cols-2">
-                  <div class="rounded-box bg-base-200/50 px-4 py-3">
-                    <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Project</div>
-                    <div class="mt-1 font-medium text-base-content">{{ (document as any).projectName || document.projectId?.slice(0, 8) }}</div>
+                <template v-if="latestRenderedHtml">
+                  <div class="mb-4 flex items-center justify-between gap-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">Rendered version snapshot</p>
+                    <span class="badge badge-outline">v{{ latestVersion?.versionNumber }}</span>
                   </div>
-                  <div class="rounded-box bg-base-200/50 px-4 py-3">
-                    <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Client</div>
-                    <div class="mt-1 font-medium text-base-content">{{ document.clientName || '-' }}</div>
-                  </div>
-                </div>
+                  <div class="ocs-legal-richtext text-sm leading-7 text-base-content/75" v-html="latestRenderedHtml" />
+                </template>
+                <template v-else>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-base-content/45">{{ document.documentType }}</p>
+                  <h3 class="mt-3 text-2xl font-bold text-base-content">{{ document.title }}</h3>
+                  <p class="mt-2 text-sm leading-7 text-base-content/70">
+                    {{ previewIntro }}
+                  </p>
 
-                <div class="mt-6 space-y-4 text-sm leading-7 text-base-content/75">
-                  <p>{{ previewBody }}</p>
-                  <p>{{ previewFooter }}</p>
-                </div>
+                  <div class="mt-6 grid gap-4 md:grid-cols-2">
+                    <div class="rounded-box bg-base-200/50 px-4 py-3">
+                      <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Project</div>
+                      <div class="mt-1 font-medium text-base-content">{{ (document as any).projectName || document.projectId?.slice(0, 8) }}</div>
+                    </div>
+                    <div class="rounded-box bg-base-200/50 px-4 py-3">
+                      <div class="text-xs uppercase tracking-[0.16em] text-base-content/45">Client</div>
+                      <div class="mt-1 font-medium text-base-content">{{ document.clientName || '-' }}</div>
+                    </div>
+                  </div>
+
+                  <div class="mt-6 space-y-4 text-sm leading-7 text-base-content/75">
+                    <p>{{ previewBody }}</p>
+                    <p>{{ previewFooter }}</p>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -238,7 +247,12 @@
     @close="isNewVersionModalOpen = false"
   >
     <div class="grid gap-3">
-      <textarea v-model="versionNote" class="textarea textarea-bordered w-full" placeholder="Version notes (optional)" rows="3" />
+      <UiRichTextEditor
+        v-model="versionNote"
+        placeholder="Version notes or rendered document snapshot"
+        hint="Use rich text when storing a document snapshot or review note for this version."
+        min-height="10rem"
+      />
     </div>
 
     <template #actions>
@@ -268,6 +282,8 @@ const { data: docData, refresh: refreshDoc } = await useFetch(`/api/legal/docume
 
 const document = computed(() => docData.value || null)
 const versions = computed(() => (docData.value as any)?.versions || [])
+const latestVersion = computed(() => versions.value[0] || null)
+const latestRenderedHtml = computed(() => String((latestVersion.value as any)?.renderedHtml || '').trim())
 
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const isNewVersionModalOpen = ref(false)

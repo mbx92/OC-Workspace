@@ -58,3 +58,72 @@
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
+
+.ocs-rich-editor .tiptap {
+  min-height: var(--ocs-rich-editor-min-height, 8rem);
+  padding: 0.875rem 1rem;
+  color: var(--color-base-content);
+  outline: none;
+}
+
+.ocs-rich-editor .tiptap p {
+  margin: 0;
+}
+
+.ocs-rich-editor .tiptap p + p,
+.ocs-rich-editor .tiptap ul + p,
+.ocs-rich-editor .tiptap ol + p,
+.ocs-rich-editor .tiptap blockquote + p,
+.ocs-rich-editor .tiptap p + ul,
+.ocs-rich-editor .tiptap p + ol,
+.ocs-rich-editor .tiptap p + blockquote {
+  margin-top: 0.75rem;
+}
+
+.ocs-rich-editor .tiptap ul,
+.ocs-rich-editor .tiptap ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.ocs-rich-editor .tiptap blockquote {
+  margin: 0;
+  border-left: 3px solid color-mix(in oklch, var(--color-primary) 45%, white 55%);
+  padding-left: 0.875rem;
+  color: color-mix(in oklch, var(--color-base-content) 78%, white 22%);
+}
+
+.ocs-rich-editor .tiptap p.is-editor-empty:first-child::before {
+  color: color-mix(in oklch, var(--color-base-content) 45%, white 55%);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ocs-legal-richtext p {
+  margin: 0;
+}
+
+.ocs-legal-richtext p + p,
+.ocs-legal-richtext ul + p,
+.ocs-legal-richtext ol + p,
+.ocs-legal-richtext blockquote + p,
+.ocs-legal-richtext p + ul,
+.ocs-legal-richtext p + ol,
+.ocs-legal-richtext p + blockquote {
+  margin-top: 0.75rem;
+}
+
+.ocs-legal-richtext ul,
+.ocs-legal-richtext ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.ocs-legal-richtext blockquote {
+  margin: 0;
+  border-left: 3px solid color-mix(in oklch, var(--color-primary) 45%, white 55%);
+  padding-left: 0.875rem;
+  color: color-mix(in oklch, var(--color-base-content) 78%, white 22%);
+}

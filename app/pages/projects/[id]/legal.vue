@@ -91,12 +91,20 @@
 
           <div class="form-control w-full">
             <label class="label"><span class="label-text font-medium">Ringkasan Eksekutif</span></label>
-            <textarea v-model="docs.proposal.summary" class="textarea textarea-bordered w-full h-28 resize-none" placeholder="Deskripsi singkat tentang proyek..."></textarea>
+            <UiRichTextEditor
+              v-model="docs.proposal.summary"
+              placeholder="Deskripsi singkat tentang proyek..."
+              min-height="7rem"
+            />
           </div>
 
           <div class="form-control w-full">
             <label class="label"><span class="label-text font-medium">Scope of Work</span></label>
-            <textarea v-model="docs.proposal.scope" class="textarea textarea-bordered w-full h-40 resize-y" placeholder="Detail scope pekerjaan..."></textarea>
+            <UiRichTextEditor
+              v-model="docs.proposal.scope"
+              placeholder="Detail scope pekerjaan..."
+              min-height="10rem"
+            />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -233,12 +241,20 @@
           <!-- Payment Terms -->
           <div class="form-control w-full">
             <label class="label"><span class="label-text font-medium">Syarat Pembayaran</span></label>
-            <textarea v-model="docs.penawaran.paymentTerms" class="textarea textarea-bordered w-full h-20 resize-none" placeholder="e.g. 40% di muka, 30% setelah milestone, 30% setelah selesai"></textarea>
+            <UiRichTextEditor
+              v-model="docs.penawaran.paymentTerms"
+              placeholder="e.g. 40% di muka, 30% setelah milestone, 30% setelah selesai"
+              min-height="6rem"
+            />
           </div>
 
           <div class="form-control w-full">
             <label class="label"><span class="label-text font-medium">Catatan Tambahan</span></label>
-            <textarea v-model="docs.penawaran.notes" class="textarea textarea-bordered w-full h-20 resize-none" placeholder="Catatan khusus untuk klien..."></textarea>
+            <UiRichTextEditor
+              v-model="docs.penawaran.notes"
+              placeholder="Catatan khusus untuk klien..."
+              min-height="6rem"
+            />
           </div>
         </div>
       </div>
@@ -342,7 +358,11 @@
                   </button>
                 </div>
                 <input type="text" v-model="clause.title" class="input input-bordered input-sm w-full" placeholder="Judul pasal..." />
-                <textarea v-model="clause.content" class="textarea textarea-bordered w-full text-sm h-24 resize-y" placeholder="Isi pasal..."></textarea>
+                <UiRichTextEditor
+                  v-model="clause.content"
+                  placeholder="Isi pasal..."
+                  min-height="7rem"
+                />
               </div>
               <button class="btn btn-ghost btn-sm gap-1" @click="openClauseModal">
                 <IconPlus class="w-4 h-4"/> Tambah Pasal
@@ -379,9 +399,9 @@
           <p class="text-xs font-semibold uppercase text-base-content/50 tracking-wide">Dipersiapkan untuk</p>
           <p class="font-semibold">{{ docs.proposal.clientName || '[Nama Klien]' }}</p>
           <h3 class="font-bold mt-4">Ringkasan Eksekutif</h3>
-          <p class="whitespace-pre-line">{{ docs.proposal.summary }}</p>
+          <div class="ocs-legal-richtext" v-html="renderRichText(docs.proposal.summary)" />
           <h3 class="font-bold mt-4">Scope of Work</h3>
-          <p class="whitespace-pre-line">{{ docs.proposal.scope }}</p>
+          <div class="ocs-legal-richtext" v-html="renderRichText(docs.proposal.scope)" />
           <h3 class="font-bold mt-4">Timeline</h3>
           <p>{{ docs.proposal.timeline }}</p>
           <h3 class="font-bold mt-4">Deliverables</h3>
@@ -415,10 +435,10 @@
             </table>
           </div>
           <h3 class="font-bold mt-4">Syarat Pembayaran</h3>
-          <p class="whitespace-pre-line">{{ docs.penawaran.paymentTerms }}</p>
+          <div class="ocs-legal-richtext" v-html="renderRichText(docs.penawaran.paymentTerms)" />
           <div v-if="docs.penawaran.notes">
             <h3 class="font-bold mt-4">Catatan</h3>
-            <p class="whitespace-pre-line">{{ docs.penawaran.notes }}</p>
+            <div class="ocs-legal-richtext" v-html="renderRichText(docs.penawaran.notes)" />
           </div>
         </div>
 
@@ -446,7 +466,7 @@
           </div>
           <div v-for="(clause, i) in docs.agreement.clauses" :key="i" class="mb-4">
             <h3 class="font-bold">Pasal {{ i + 1 }}: {{ clause.title }}</h3>
-            <p class="whitespace-pre-line">{{ clause.content }}</p>
+            <div class="ocs-legal-richtext" v-html="renderRichText(clause.content)" />
           </div>
           <div class="divider mt-8"></div>
           <p class="text-sm text-base-content/60">Demikian perjanjian ini dibuat dalam 2 (dua) rangkap bermeterai cukup, masing-masing mempunyai kekuatan hukum yang sama.</p>
@@ -503,7 +523,11 @@
         </div>
         <div class="form-control w-full">
           <label class="label"><span class="label-text font-medium">Isi Pasal</span></label>
-          <textarea v-model="modalDraft.clauseContent" class="textarea textarea-bordered w-full h-32 resize-none" placeholder="Isi detail pasal..."></textarea>
+          <UiRichTextEditor
+            v-model="modalDraft.clauseContent"
+            placeholder="Isi detail pasal..."
+            min-height="8rem"
+          />
         </div>
       </div>
       <template #actions>
@@ -806,8 +830,40 @@ const formatHumanDate = (value) => {
   })
 }
 
-const normalizePdfLines = (value) => {
+const escapeHtml = (value) => String(value || '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;')
+
+const renderRichText = (value) => {
+  const content = String(value || '').trim()
+  if (!content) return ''
+  if (/<\/?[a-z][\s\S]*>/i.test(content)) return content
+
+  return content
+    .split(/\n{2,}/)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, '<br>')}</p>`)
+    .join('')
+}
+
+const richTextToPlainText = (value) => {
   return String(value || '')
+    .replace(/<li>/gi, '• ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h1|h2|h3|h4|h5|h6|blockquote|li|ul|ol)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+const normalizePdfLines = (value) => {
+  return richTextToPlainText(value)
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
