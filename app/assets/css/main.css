@@ -64,19 +64,110 @@
   padding: 0.875rem 1rem;
   color: var(--color-base-content);
   outline: none;
+  overflow-x: auto;
 }
 
 .ocs-rich-editor .tiptap p {
   margin: 0;
 }
 
+.ocs-rich-editor .tiptap h1,
+.ocs-rich-editor .tiptap h2,
+.ocs-rich-editor .tiptap h3,
+.ocs-rich-editor .tiptap h4,
+.ocs-legal-richtext h1,
+.ocs-legal-richtext h2,
+.ocs-legal-richtext h3,
+.ocs-legal-richtext h4 {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ocs-rich-editor .tiptap h1,
+.ocs-legal-richtext h1 {
+  font-size: 1.5rem;
+}
+
+.ocs-rich-editor .tiptap h2,
+.ocs-legal-richtext h2 {
+  font-size: 1.25rem;
+}
+
+.ocs-rich-editor .tiptap h3,
+.ocs-legal-richtext h3 {
+  font-size: 1.125rem;
+}
+
+.ocs-rich-editor .tiptap h4,
+.ocs-legal-richtext h4 {
+  font-size: 1rem;
+}
+
 .ocs-rich-editor .tiptap p + p,
+.ocs-rich-editor .tiptap h1 + p,
+.ocs-rich-editor .tiptap h2 + p,
+.ocs-rich-editor .tiptap h3 + p,
+.ocs-rich-editor .tiptap h4 + p,
 .ocs-rich-editor .tiptap ul + p,
 .ocs-rich-editor .tiptap ol + p,
+.ocs-rich-editor .tiptap pre + p,
 .ocs-rich-editor .tiptap blockquote + p,
+.ocs-rich-editor .tiptap hr + p,
 .ocs-rich-editor .tiptap p + ul,
 .ocs-rich-editor .tiptap p + ol,
-.ocs-rich-editor .tiptap p + blockquote {
+.ocs-rich-editor .tiptap p + pre,
+.ocs-rich-editor .tiptap p + blockquote,
+.ocs-rich-editor .tiptap p + h1,
+.ocs-rich-editor .tiptap p + h2,
+.ocs-rich-editor .tiptap p + h3,
+.ocs-rich-editor .tiptap p + h4,
+.ocs-rich-editor .tiptap h1 + h2,
+.ocs-rich-editor .tiptap h2 + h3,
+.ocs-rich-editor .tiptap h3 + h4,
+.ocs-rich-editor .tiptap h1 + ul,
+.ocs-rich-editor .tiptap h2 + ul,
+.ocs-rich-editor .tiptap h3 + ul,
+.ocs-rich-editor .tiptap h4 + ul,
+.ocs-rich-editor .tiptap h1 + ol,
+.ocs-rich-editor .tiptap h2 + ol,
+.ocs-rich-editor .tiptap h3 + ol,
+.ocs-rich-editor .tiptap h4 + ol,
+.ocs-rich-editor .tiptap h1 + blockquote,
+.ocs-rich-editor .tiptap h2 + blockquote,
+.ocs-rich-editor .tiptap h3 + blockquote,
+.ocs-rich-editor .tiptap h4 + blockquote,
+.ocs-rich-editor .tiptap h1 + pre,
+.ocs-rich-editor .tiptap h2 + pre,
+.ocs-rich-editor .tiptap h3 + pre,
+.ocs-rich-editor .tiptap h4 + pre,
+.ocs-rich-editor .tiptap h1 + hr,
+.ocs-rich-editor .tiptap h2 + hr,
+.ocs-rich-editor .tiptap h3 + hr,
+.ocs-rich-editor .tiptap h4 + hr,
+.ocs-rich-editor .tiptap hr + h1,
+.ocs-rich-editor .tiptap hr + h2,
+.ocs-rich-editor .tiptap hr + h3,
+.ocs-rich-editor .tiptap hr + h4,
+.ocs-rich-editor .tiptap hr + ul,
+.ocs-rich-editor .tiptap hr + ol,
+.ocs-rich-editor .tiptap hr + blockquote,
+.ocs-rich-editor .tiptap hr + pre,
+.ocs-rich-editor .tiptap table + p,
+.ocs-rich-editor .tiptap p + table,
+.ocs-rich-editor .tiptap h1 + table,
+.ocs-rich-editor .tiptap h2 + table,
+.ocs-rich-editor .tiptap h3 + table,
+.ocs-rich-editor .tiptap h4 + table,
+.ocs-rich-editor .tiptap table + h1,
+.ocs-rich-editor .tiptap table + h2,
+.ocs-rich-editor .tiptap table + h3,
+.ocs-rich-editor .tiptap table + h4,
+.ocs-rich-editor .tiptap table + ul,
+.ocs-rich-editor .tiptap table + ol,
+.ocs-rich-editor .tiptap table + blockquote,
+.ocs-rich-editor .tiptap table + pre,
+.ocs-rich-editor .tiptap table + hr {
   margin-top: 0.75rem;
 }
 
@@ -86,11 +177,108 @@
   padding-left: 1.25rem;
 }
 
+.ocs-rich-editor .tiptap ul[data-type='taskList'],
+.ocs-legal-richtext ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ocs-rich-editor .tiptap ul[data-type='taskList'] li,
+.ocs-legal-richtext ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.ocs-rich-editor .tiptap ul[data-type='taskList'] li > label,
+.ocs-legal-richtext ul[data-type='taskList'] li > label {
+  margin-top: 0.125rem;
+}
+
+.ocs-rich-editor .tiptap ul[data-type='taskList'] li > div,
+.ocs-legal-richtext ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+
 .ocs-rich-editor .tiptap blockquote {
   margin: 0;
   border-left: 3px solid color-mix(in oklch, var(--color-primary) 45%, white 55%);
   padding-left: 0.875rem;
   color: color-mix(in oklch, var(--color-base-content) 78%, white 22%);
+}
+
+.ocs-rich-editor .tiptap a,
+.ocs-legal-richtext a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.ocs-rich-editor .tiptap code,
+.ocs-legal-richtext code {
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--color-base-300) 82%, white 18%);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.9em;
+}
+
+.ocs-rich-editor .tiptap pre,
+.ocs-legal-richtext pre {
+  margin: 0;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: color-mix(in oklch, var(--color-neutral) 94%, white 6%);
+  padding: 0.875rem 1rem;
+  color: var(--color-neutral-content);
+}
+
+.ocs-rich-editor .tiptap pre code,
+.ocs-legal-richtext pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.ocs-rich-editor .tiptap mark,
+.ocs-legal-richtext mark {
+  border-radius: 0.2rem;
+  background: #fef08a;
+  padding: 0.05rem 0.15rem;
+}
+
+.ocs-rich-editor .tiptap hr,
+.ocs-legal-richtext hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid color-mix(in oklch, var(--color-base-content) 14%, white 86%);
+}
+
+.ocs-rich-editor .tiptap table,
+.ocs-legal-richtext table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ocs-rich-editor .tiptap th,
+.ocs-rich-editor .tiptap td,
+.ocs-legal-richtext th,
+.ocs-legal-richtext td {
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 14%, white 86%);
+  padding: 0.625rem 0.75rem;
+  vertical-align: top;
+}
+
+.ocs-rich-editor .tiptap th,
+.ocs-legal-richtext th {
+  background: color-mix(in oklch, var(--color-base-200) 90%, white 10%);
+  font-weight: 600;
+  text-align: left;
+}
+
+.ocs-rich-editor .tiptap .selectedCell {
+  background: color-mix(in oklch, var(--color-primary) 10%, white 90%);
 }
 
 .ocs-rich-editor .tiptap p.is-editor-empty:first-child::before {
@@ -106,12 +294,69 @@
 }
 
 .ocs-legal-richtext p + p,
+.ocs-legal-richtext h1 + p,
+.ocs-legal-richtext h2 + p,
+.ocs-legal-richtext h3 + p,
+.ocs-legal-richtext h4 + p,
 .ocs-legal-richtext ul + p,
 .ocs-legal-richtext ol + p,
+.ocs-legal-richtext pre + p,
 .ocs-legal-richtext blockquote + p,
+.ocs-legal-richtext hr + p,
 .ocs-legal-richtext p + ul,
 .ocs-legal-richtext p + ol,
-.ocs-legal-richtext p + blockquote {
+.ocs-legal-richtext p + pre,
+.ocs-legal-richtext p + blockquote,
+.ocs-legal-richtext p + h1,
+.ocs-legal-richtext p + h2,
+.ocs-legal-richtext p + h3,
+.ocs-legal-richtext p + h4,
+.ocs-legal-richtext h1 + h2,
+.ocs-legal-richtext h2 + h3,
+.ocs-legal-richtext h3 + h4,
+.ocs-legal-richtext h1 + ul,
+.ocs-legal-richtext h2 + ul,
+.ocs-legal-richtext h3 + ul,
+.ocs-legal-richtext h4 + ul,
+.ocs-legal-richtext h1 + ol,
+.ocs-legal-richtext h2 + ol,
+.ocs-legal-richtext h3 + ol,
+.ocs-legal-richtext h4 + ol,
+.ocs-legal-richtext h1 + blockquote,
+.ocs-legal-richtext h2 + blockquote,
+.ocs-legal-richtext h3 + blockquote,
+.ocs-legal-richtext h4 + blockquote,
+.ocs-legal-richtext h1 + pre,
+.ocs-legal-richtext h2 + pre,
+.ocs-legal-richtext h3 + pre,
+.ocs-legal-richtext h4 + pre,
+.ocs-legal-richtext h1 + hr,
+.ocs-legal-richtext h2 + hr,
+.ocs-legal-richtext h3 + hr,
+.ocs-legal-richtext h4 + hr,
+.ocs-legal-richtext hr + h1,
+.ocs-legal-richtext hr + h2,
+.ocs-legal-richtext hr + h3,
+.ocs-legal-richtext hr + h4,
+.ocs-legal-richtext hr + ul,
+.ocs-legal-richtext hr + ol,
+.ocs-legal-richtext hr + blockquote,
+.ocs-legal-richtext hr + pre,
+.ocs-legal-richtext table + p,
+.ocs-legal-richtext p + table,
+.ocs-legal-richtext h1 + table,
+.ocs-legal-richtext h2 + table,
+.ocs-legal-richtext h3 + table,
+.ocs-legal-richtext h4 + table,
+.ocs-legal-richtext table + h1,
+.ocs-legal-richtext table + h2,
+.ocs-legal-richtext table + h3,
+.ocs-legal-richtext table + h4,
+.ocs-legal-richtext table + ul,
+.ocs-legal-richtext table + ol,
+.ocs-legal-richtext table + blockquote,
+.ocs-legal-richtext table + pre,
+.ocs-legal-richtext table + hr {
   margin-top: 0.75rem;
 }
 
