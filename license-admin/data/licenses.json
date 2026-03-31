@@ -1,0 +1,21 @@
+[
+  {
+    "id": "seed-license-1",
+    "licenseKey": "PB-A1B2-C3D4-E5F6",
+    "clientName": "Pebbles Demo Client",
+    "clientEmail": "hello@example.com",
+    "domain": "demo.pebblesbali.com",
+    "plan": "commerce",
+    "features": [
+      "shop",
+      "cart",
+      "blog",
+      "testimonials",
+      "mediaLibrary"
+    ],
+    "isActive": true,
+    "expiresAt": "2026-03-31",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-30T03:34:58.140Z"
+  }
+]

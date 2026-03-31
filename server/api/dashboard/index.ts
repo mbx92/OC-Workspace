@@ -1,6 +1,7 @@
 import { db } from '../../db/client'
-import { projects, bugs, legalDocuments, projectLicenses, commissions } from '../../db/schema'
+import { projects, bugs, legalDocuments, commissions } from '../../db/schema'
 import { eq, isNull, sql, and } from 'drizzle-orm'
+import { countExpiringLicenses } from '../../services/licenses'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
     db.select({ count: sql<number>`count(*)` }).from(projects).where(and(eq(projects.status, 'active'), isNull(projects.archivedAt))),
     db.select({ count: sql<number>`count(*)` }).from(bugs).where(eq(bugs.status, 'open')),
     db.select({ count: sql<number>`count(*)` }).from(legalDocuments).where(eq(legalDocuments.status, 'draft')),
-    db.select({ count: sql<number>`count(*)` }).from(projectLicenses).where(eq(projectLicenses.status, 'expiring_soon')),
+    countExpiringLicenses(),
     db.select({ count: sql<number>`count(*)` }).from(commissions).where(eq(commissions.status, 'approved')),
   ])
 
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
       activeProjects: Number(activeProjects[0]?.count ?? 0),
       openBugs: Number(openBugs[0]?.count ?? 0),
       pendingLegalDocs: Number(pendingLegal[0]?.count ?? 0),
-      expiringLicenses: Number(licenseCount[0]?.count ?? 0),
+      expiringLicenses: Number(licenseCount ?? 0),
       unpaidCommissions: Number(unpaidCommissions[0]?.count ?? 0),
     },
     recentProjects,

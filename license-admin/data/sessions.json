@@ -1,0 +1,50 @@
+[
+  {
+    "id": "0195c2470d2008326521c6d3c86598482cf28cbd7786e1e2032d6d9b4ca6fe64",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T03:28:43.740Z",
+    "expiresAt": "2026-04-06T03:28:43.740Z"
+  },
+  {
+    "id": "4000b7d0af4172f1e608ad19d6fa7d453bc653fd6d1f47d133a164d500ce5886",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T03:29:27.498Z",
+    "expiresAt": "2026-04-06T03:29:27.498Z"
+  },
+  {
+    "id": "dc2eb6e267899a6b9f4ca28f84a4804cf79b7a1ad865d3fe52f148eeceb8ec9d",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T03:42:13.436Z",
+    "expiresAt": "2026-04-06T03:42:13.434Z"
+  },
+  {
+    "id": "4ffd79a176f2131dd1ffd6a962b181e6b514bb0e33892b97fb87c301434ad271",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T05:18:43.034Z",
+    "expiresAt": "2026-04-06T05:18:43.033Z"
+  },
+  {
+    "id": "91d85749028ecc5471f95f7e331431861577416f536485fd31209dfc7b2adf30",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T05:19:19.380Z",
+    "expiresAt": "2026-04-06T05:19:19.379Z"
+  },
+  {
+    "id": "4ec6542fed096c91b51da4bbce0a17cec4caa3de1f1c8a67cb0a634919129832",
+    "email": "admin@pebblesbali.com",
+    "name": "Platform Administrator",
+    "role": "admin",
+    "createdAt": "2026-03-30T05:45:38.609Z",
+    "expiresAt": "2026-04-06T05:45:38.608Z"
+  }
+]

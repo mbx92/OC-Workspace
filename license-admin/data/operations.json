@@ -1,0 +1,92 @@
+[
+  {
+    "id": "OP-AB20",
+    "createdAt": "2026-03-30T05:55:30.707Z",
+    "type": "update",
+    "title": "Plan updated",
+    "subject": "Starter",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Updated starter plan defaults",
+    "tone": "info"
+  },
+  {
+    "id": "OP-5517",
+    "createdAt": "2026-03-30T05:45:38.613Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  },
+  {
+    "id": "OP-BA24",
+    "createdAt": "2026-03-30T05:19:19.382Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  },
+  {
+    "id": "OP-1B35",
+    "createdAt": "2026-03-30T05:18:43.039Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  },
+  {
+    "id": "OP-81ED",
+    "createdAt": "2026-03-30T03:42:13.439Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  },
+  {
+    "id": "OP-2E1A",
+    "createdAt": "2026-03-30T03:35:11.554Z",
+    "type": "validate",
+    "title": "Validation succeeded",
+    "subject": "Pebbles Demo Client",
+    "actor": "Validator API",
+    "detail": "Validated demo.pebblesbali.com on commerce plan",
+    "tone": "success"
+  },
+  {
+    "id": "OP-5182",
+    "createdAt": "2026-03-30T03:34:58.144Z",
+    "type": "update",
+    "title": "License updated",
+    "subject": "Pebbles Demo Client",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Updated commerce configuration for demo.pebblesbali.com",
+    "tone": "info"
+  },
+  {
+    "id": "OP-3846",
+    "createdAt": "2026-03-30T03:29:27.503Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  },
+  {
+    "id": "OP-5D75",
+    "createdAt": "2026-03-30T03:28:43.744Z",
+    "type": "login",
+    "title": "Operator signed in",
+    "subject": "admin@pebblesbali.com",
+    "actor": "admin@pebblesbali.com",
+    "detail": "Access granted to license administration workspace",
+    "tone": "info"
+  }
+]

@@ -1,4 +1,6 @@
 import { getLicense, updateLicense, deleteLicense } from '../../../services/licenses'
+import { requireAuth, requireMinRole } from '../../../utils/auth'
+import { updateLicenseSchema } from '../../../utils/validation'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)

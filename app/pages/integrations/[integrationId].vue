@@ -48,155 +48,222 @@
       </div>
     </section>
 
-    <section class="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
+    <section class="grid gap-6 xl:grid-cols-[1.45fr_0.85fr] items-start">
       <div class="space-y-6">
         <div class="card border border-base-300 bg-base-100 shadow-sm">
-          <div class="card-body p-0">
-            <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
-              <div>
-                <h2 class="text-lg font-semibold text-base-content">Field Mapping</h2>
-                <p class="text-sm text-base-content/60">Translate external statuses and priorities into normalized internal values.</p>
-              </div>
-              <span class="badge badge-ghost badge-sm">{{ mappingRows.length }} mapping{{ mappingRows.length !== 1 ? 's' : '' }}</span>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Source Field</th>
-                    <th>Target Field</th>
-                    <th>Transform Rule</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in mappingRows" :key="row.id">
-                    <td class="font-medium text-base-content">{{ row.sourceField }}</td>
-                    <td>{{ row.targetField }}</td>
-                    <td class="text-sm text-base-content/65">{{ row.transformRule || '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="border-b border-base-300">
+            <div class="tabs tabs-bordered px-4 pt-2">
+              <a class="tab" :class="{ 'tab-active': activeTab === 'records' }" @click="activeTab = 'records'">Records</a>
+              <a class="tab" :class="{ 'tab-active': activeTab === 'jobs' }" @click="activeTab = 'jobs'">Sync Jobs</a>
+              <a class="tab" :class="{ 'tab-active': activeTab === 'deliveries' }" @click="activeTab = 'deliveries'">Webhook Logs</a>
+              <a class="tab" :class="{ 'tab-active': activeTab === 'mapping' }" @click="activeTab = 'mapping'">Field Mapping</a>
             </div>
           </div>
-        </div>
-
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body p-0">
-            <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
-              <div>
-                <h2 class="text-lg font-semibold text-base-content">Sync Jobs</h2>
-                <p class="text-sm text-base-content/60">Queued, running, partial, and failed results stay visible for auditability.</p>
+            <!-- Records Tab -->
+            <div v-if="activeTab === 'records'">
+              <div class="grid gap-3 border-b border-base-300 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <label class="input input-bordered input-sm flex items-center gap-2">
+                  <IconDatabaseImport class="h-4 w-4 opacity-60" />
+                  <input v-model="recordFilters.query" type="text" class="grow" placeholder="Search source ID or title" />
+                </label>
+
+                <select v-model="recordFilters.kind" class="select select-bordered select-sm w-full lg:w-36">
+                  <option value="">All types</option>
+                  <option value="task">Task</option>
+                  <option value="feature">Feature</option>
+                  <option value="bug">Bug</option>
+                </select>
               </div>
-              <span class="badge badge-ghost badge-sm">{{ syncJobs.length }} job{{ syncJobs.length !== 1 ? 's' : '' }}</span>
-            </div>
 
-            <div class="overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Job</th>
-                    <th>Status</th>
-                    <th>Started</th>
-                    <th>Finished</th>
-                    <th>Imported</th>
-                    <th>Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="job in syncJobs" :key="job.id">
-                    <td class="font-medium text-base-content">{{ job.id.slice(0, 8) }}</td>
-                    <td><span class="badge badge-outline" :class="jobStatusClass(job.status)">{{ job.status }}</span></td>
-                    <td>{{ job.startedAt?.slice(0, 16) || '—' }}</td>
-                    <td>{{ job.finishedAt?.slice(0, 16) || '—' }}</td>
-                    <td>{{ job.recordsCreated + job.recordsUpdated }}</td>
-                    <td class="text-sm text-base-content/65">{{ job.errorMessage || job.jobType }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
-          <div class="card-body p-0">
-            <div class="grid gap-3 border-b border-base-300 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-              <label class="input input-bordered input-sm flex items-center gap-2">
-                <IconDatabaseImport class="h-4 w-4 opacity-60" />
-                <input v-model="recordFilters.query" type="text" class="grow" placeholder="Search source ID or title" />
-              </label>
-
-              <select v-model="recordFilters.kind" class="select select-bordered select-sm w-full lg:w-36">
-                <option value="">All types</option>
-                <option value="task">Task</option>
-                <option value="feature">Feature</option>
-                <option value="bug">Bug</option>
-              </select>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Source ID</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Payload Preview</th>
-                    <th>Mapped ID</th>
-                    <th>Last Seen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="record in filteredRecords" :key="record.id">
-                    <td class="max-w-xs">
-                      <div class="font-medium text-base-content truncate" :title="record.sourcePayloadJson?.title">{{ record.sourcePayloadJson?.title || '—' }}</div>
-                      <div class="text-xs text-base-content/50">{{ record.mappedEntityType || record.sourceEntityType }}</div>
-                    </td>
-                    <td class="font-mono text-xs text-base-content/65">{{ record.sourceId }}</td>
-                    <td>
-                      <span class="badge badge-ghost badge-sm capitalize">{{ record.sourceEntityType }}</span>
-                    </td>
-                    <td>
-                      <span v-if="record.sourceStatus" class="badge badge-outline badge-sm">{{ record.sourceStatus }}</span>
-                      <span v-else class="text-base-content/40">—</span>
-                    </td>
-                    <td class="max-w-50">
-                      <div v-if="record.sourcePayloadJson" class="space-y-0.5">
-                        <div
-                          v-for="[k, v] in payloadPreview(record.sourcePayloadJson)"
-                          :key="k"
-                          class="flex gap-1.5 text-xs"
-                        >
-                          <span class="shrink-0 font-medium text-base-content/50">{{ k }}:</span>
-                          <span class="truncate text-base-content/80" :title="String(v)">{{ v }}</span>
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Source ID</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Payload Preview</th>
+                      <th>Mapped ID</th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="record in filteredRecords" :key="record.id">
+                      <td class="max-w-xs">
+                        <div class="font-medium text-base-content truncate" :title="record.sourcePayloadJson?.title">{{ record.sourcePayloadJson?.title || '—' }}</div>
+                        <div class="text-xs text-base-content/50">{{ record.mappedEntityType || record.sourceEntityType }}</div>
+                      </td>
+                      <td class="font-mono text-xs text-base-content/65">{{ record.sourceId }}</td>
+                      <td>
+                        <span class="badge badge-ghost badge-sm capitalize">{{ record.sourceEntityType }}</span>
+                      </td>
+                      <td>
+                        <span v-if="record.sourceStatus" class="badge badge-outline badge-sm">{{ record.sourceStatus }}</span>
+                        <span v-else class="text-base-content/40">—</span>
+                      </td>
+                      <td class="max-w-50">
+                        <div v-if="record.sourcePayloadJson" class="space-y-0.5">
+                          <div
+                            v-for="[k, v] in payloadPreview(record.sourcePayloadJson)"
+                            :key="k"
+                            class="flex gap-1.5 text-xs"
+                          >
+                            <span class="shrink-0 font-medium text-base-content/50">{{ k }}:</span>
+                            <span class="truncate text-base-content/80" :title="String(v)">{{ v }}</span>
+                          </div>
                         </div>
-                      </div>
-                      <span v-else class="text-base-content/40">—</span>
-                    </td>
-                    <td>
-                      <div v-if="record.mappedEntityId" class="flex flex-col gap-1">
-                        <span class="badge badge-success badge-outline badge-sm capitalize">{{ record.mappedEntityType }}</span>
-                        <span
-                          class="font-mono text-xs text-base-content/50 select-all cursor-default"
-                          :title="record.mappedEntityId"
-                        >{{ record.mappedEntityId.slice(0, 8) }}&hellip;</span>
-                      </div>
-                      <span v-else class="badge badge-ghost badge-sm">staging</span>
-                    </td>
-                    <td class="text-xs text-base-content/55 whitespace-nowrap">{{ record.lastSeenAt?.slice(0, 16) || '—' }}</td>
-                  </tr>
-                  <tr v-if="!filteredRecords.length">
-                    <td colspan="7" class="py-10 text-center text-sm text-base-content/55">No imported records match the current filters.</td>
-                  </tr>
-                </tbody>
-              </table>
+                        <span v-else class="text-base-content/40">—</span>
+                      </td>
+                      <td>
+                        <div v-if="record.mappedEntityId" class="flex flex-col gap-1">
+                          <span class="badge badge-success badge-outline badge-sm capitalize">{{ record.mappedEntityType }}</span>
+                          <span
+                            class="font-mono text-xs text-base-content/50 select-all cursor-default"
+                            :title="record.mappedEntityId"
+                          >{{ record.mappedEntityId.slice(0, 8) }}&hellip;</span>
+                        </div>
+                        <span v-else class="badge badge-ghost badge-sm">staging</span>
+                      </td>
+                      <td class="text-xs text-base-content/55 whitespace-nowrap">{{ record.lastSeenAt?.slice(0, 16) || '—' }}</td>
+                    </tr>
+                    <tr v-if="!filteredRecords.length">
+                      <td colspan="7" class="py-10 text-center text-sm text-base-content/55">No imported records match the current filters.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Sync Jobs Tab -->
+            <div v-if="activeTab === 'jobs'">
+              <div class="grid grid-cols-3 gap-4 border-b border-base-300 px-5 py-4 bg-base-200/30">
+                <div>
+                  <div class="text-xs font-medium text-base-content/50 uppercase tracking-wider">Failed Jobs</div>
+                  <div class="mt-1 text-lg font-semibold text-error">{{ syncJobs.filter((job: any) => job.status === 'failed').length }}</div>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-base-content/50 uppercase tracking-wider">Total Created</div>
+                  <div class="mt-1 text-lg font-semibold text-base-content">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsCreated || 0), 0) }}</div>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-base-content/50 uppercase tracking-wider">Total Updated</div>
+                  <div class="mt-1 text-lg font-semibold text-base-content">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsUpdated || 0), 0) }}</div>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
+                <div>
+                  <h2 class="text-lg font-semibold text-base-content">Sync History</h2>
+                  <p class="text-sm text-base-content/60">Queued, running, partial, and failed results stay visible for auditability.</p>
+                </div>
+                <span class="badge badge-ghost badge-sm">{{ syncJobs.length }} job{{ syncJobs.length !== 1 ? 's' : '' }}</span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Job</th>
+                      <th>Status</th>
+                      <th>Started</th>
+                      <th>Finished</th>
+                      <th>Imported</th>
+                      <th>Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="job in syncJobs" :key="job.id">
+                      <td class="font-medium text-base-content">{{ job.id.slice(0, 8) }}</td>
+                      <td><span class="badge badge-outline" :class="jobStatusClass(job.status)">{{ job.status }}</span></td>
+                      <td>{{ job.startedAt?.slice(0, 16) || '—' }}</td>
+                      <td>{{ job.finishedAt?.slice(0, 16) || '—' }}</td>
+                      <td>{{ job.recordsCreated + job.recordsUpdated }}</td>
+                      <td class="text-sm text-base-content/65">{{ job.errorMessage || job.jobType }}</td>
+                    </tr>
+                    <tr v-if="!syncJobs.length">
+                      <td colspan="6" class="py-10 text-center text-sm text-base-content/55">No sync jobs have been executed yet.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Webhook Logs Tab -->
+            <div v-if="activeTab === 'deliveries'">
+              <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
+                <div>
+                  <h2 class="text-lg font-semibold text-base-content">Webhook Deliveries</h2>
+                  <p class="text-sm text-base-content/60">History of outbound webhooks triggered to notify external systems.</p>
+                </div>
+                <span class="badge badge-ghost badge-sm">{{ webhookDeliveries.length }} delivery{{ webhookDeliveries.length !== 1 ? 's' : '' }}</span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Response Code</th>
+                      <th>Date</th>
+                      <th>Event</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="d in webhookDeliveries" :key="d.id">
+                      <td><span class="badge badge-sm" :class="d.status === 'delivered' ? 'badge-success' : 'badge-error'">{{ d.status }}</span></td>
+                      <td class="font-mono text-base-content/65">{{ d.responseStatus ?? '—' }}</td>
+                      <td class="text-base-content/65">{{ d.createdAt?.slice(0, 16) }}</td>
+                      <td class="font-medium text-base-content capitalize">{{ d.event }} · {{ d.entityType }}</td>
+                      <td class="max-w-xs text-error truncate" :title="d.errorMessage || ''">{{ d.errorMessage || '—' }}</td>
+                    </tr>
+                    <tr v-if="!webhookDeliveries.length">
+                      <td colspan="5" class="py-10 text-center text-sm text-base-content/55">Belum ada webhook terkirim.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Field Mapping Tab -->
+            <div v-if="activeTab === 'mapping'">
+              <div class="flex items-center justify-between border-b border-base-300 px-5 py-4">
+                <div>
+                  <h2 class="text-lg font-semibold text-base-content">Field Mapping</h2>
+                  <p class="text-sm text-base-content/60">Translate external statuses and priorities into normalized internal values.</p>
+                </div>
+                <span class="badge badge-ghost badge-sm">{{ mappingRows.length }} mapping{{ mappingRows.length !== 1 ? 's' : '' }}</span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Source Field</th>
+                      <th>Target Field</th>
+                      <th>Transform Rule</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in mappingRows" :key="row.id">
+                      <td class="font-medium text-base-content">{{ row.sourceField }}</td>
+                      <td>{{ row.targetField }}</td>
+                      <td class="text-sm text-base-content/65">{{ row.transformRule || '—' }}</td>
+                    </tr>
+                    <tr v-if="!mappingRows.length">
+                      <td colspan="3" class="py-10 text-center text-sm text-base-content/55">No field mappings configured.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="space-y-4">
+      <div class="space-y-4 lg:sticky lg:top-4">
         <div v-if="message" class="alert" :class="message.type === 'error' ? 'alert-error' : 'alert-success'">
           <span>{{ message.text }}</span>
         </div>
@@ -212,35 +279,36 @@
         <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
             <div class="flex items-center justify-between">
-              <h2 class="card-title text-lg">Connection Summary</h2>
-              <IconPlugConnected class="h-5 w-5 text-primary" />
+              <h2 class="card-title text-base">Connection Summary</h2>
+              <IconPlugConnected class="h-4 w-4 text-primary" />
             </div>
 
-            <div class="space-y-3 text-sm">
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
+            <div class="space-y-2 text-sm">
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
                 <div class="font-medium text-base-content">Base URL</div>
-                <div class="mt-1 text-base-content/65">{{ connection.baseUrl || '—' }}</div>
+                <div class="text-base-content/65">{{ connection.baseUrl || '—' }}</div>
               </div>
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
                 <div class="font-medium text-base-content">Auth Type</div>
-                <div class="mt-1 text-base-content/65">{{ connection.authType }}</div>
+                <div class="text-base-content/65">{{ connection.authType }}</div>
               </div>
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
                 <div class="font-medium text-base-content">Provider Type</div>
-                <div class="mt-1 text-base-content/65">{{ connection.providerType }}</div>
+                <div class="text-base-content/65">{{ connection.providerType }}</div>
               </div>
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
                 <div class="font-medium text-base-content">Latest Sync</div>
-                <div class="mt-1 text-base-content/65">{{ latestJob?.startedAt?.slice(0, 16) || 'No sync history yet' }} - {{ latestJob?.status || 'n/a' }}</div>
+                <div class="text-base-content/65">{{ latestJob?.startedAt?.slice(0, 16) || 'No sync history yet' }} - {{ latestJob?.status || 'n/a' }}</div>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- Outbound Webhook -->
         <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
-            <h2 class="card-title text-lg">Webhook (Write-back)</h2>
-            <p class="text-sm text-base-content/60">OCS akan POST ke client kamu setiap kali status task/bug/feature berubah.</p>
+            <h2 class="card-title text-base text-primary">Webhook (Outbound)</h2>
+            <p class="text-xs text-base-content/60">OCS akan POST ke client kamu setiap kali status task/bug/feature berubah.</p>
 
             <div class="mt-2 space-y-3 text-sm">
               <label class="flex cursor-pointer items-center justify-between gap-3">
@@ -261,18 +329,50 @@
                   class="input input-bordered input-sm w-full font-mono"
                   placeholder="/api/ocs-webhook"
                 />
-                <span class="fieldset-label text-xs text-base-content/50">Dipanggil ke: {{ connection.baseUrl || '&lt;base_url&gt;' }}{{ webhookForm.webhookPath || '/path' }}</span>
+                <span class="fieldset-label text-[10px] text-base-content/50">Dipanggil ke: {{ connection.baseUrl || '&lt;base_url&gt;' }}{{ webhookForm.webhookPath || '/path' }}</span>
               </fieldset>
 
               <fieldset class="ocs-field">
                 <legend class="fieldset-legend">Webhook Secret</legend>
-                <input
-                  v-model="webhookForm.webhookSecret"
-                  type="text"
-                  class="input input-bordered input-sm w-full font-mono"
-                  placeholder="my-secret-key"
-                />
-                <span class="fieldset-label text-xs text-base-content/50">OCS menambahkan header <code class="bg-base-200 px-1 rounded">X-OCS-Signature: sha256=&lt;hmac&gt;</code></span>
+                <div class="flex gap-1.5">
+                  <label class="input input-bordered input-sm flex grow items-center gap-1 font-mono">
+                    <input
+                      v-model="webhookForm.webhookSecret"
+                      :type="showWebhookSecret ? 'text' : 'password'"
+                      class="grow min-w-0"
+                      placeholder="my-secret-key"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs px-1"
+                      tabindex="-1"
+                      :title="showWebhookSecret ? 'Sembunyikan' : 'Tampilkan'"
+                      @click="showWebhookSecret = !showWebhookSecret"
+                    >
+                      <IconEyeOff v-if="showWebhookSecret" class="h-3.5 w-3.5 opacity-60" />
+                      <IconEye v-else class="h-3.5 w-3.5 opacity-60" />
+                    </button>
+                  </label>
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm px-2"
+                    title="Copy secret"
+                    :disabled="!webhookForm.webhookSecret"
+                    @click="copyWebhookSecret"
+                  >
+                    <IconCheck v-if="webhookSecretCopied" class="h-3.5 w-3.5 text-success" />
+                    <IconCopy v-else class="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm px-2"
+                    title="Generate secret baru"
+                    @click="generateWebhookSecret"
+                  >
+                    <IconRefresh class="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <span class="fieldset-label text-[10px] text-base-content/50">Header: <code class="bg-base-200 px-1 rounded">X-OCS-Signature: sha256=&lt;hmac&gt;</code></span>
               </fieldset>
 
               <button class="btn btn-primary btn-sm w-full" :disabled="savingWebhook" @click="saveWebhookConfig">
@@ -282,45 +382,44 @@
           </div>
         </div>
 
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
-          <div class="card-body p-0">
-            <div class="flex items-center justify-between border-b border-base-300 px-4 py-3">
-              <h2 class="font-semibold text-base-content">Webhook Deliveries</h2>
-              <span class="badge badge-ghost badge-sm">{{ webhookDeliveries.length }}</span>
-            </div>
-            <div class="divide-y divide-base-200">
-              <div v-if="!webhookDeliveries.length" class="px-4 py-6 text-center text-sm text-base-content/50">
-                Belum ada webhook terkirim.
-              </div>
-              <div v-for="d in webhookDeliveries" :key="d.id" class="px-4 py-2.5 text-xs">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="badge badge-sm" :class="d.status === 'delivered' ? 'badge-success' : 'badge-error'">{{ d.status }}</span>
-                  <span class="font-mono text-base-content/50">{{ d.responseStatus ?? '—' }}</span>
-                  <span class="text-base-content/40">{{ d.createdAt?.slice(0, 16) }}</span>
-                </div>
-                <div class="mt-1 font-medium text-base-content capitalize">{{ d.event }} · {{ d.entityType }}</div>
-                <div v-if="d.errorMessage" class="mt-0.5 text-error">{{ d.errorMessage }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        <!-- GitHub Inbound Webhook -->
         <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
-            <h2 class="card-title text-lg">Failure Review</h2>
-            <div class="space-y-3 text-sm">
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Failed Jobs</div>
-                <div class="mt-1 text-base-content/65">{{ syncJobs.filter((job: any) => job.status === 'failed').length }} job(s) marked failed.</div>
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-base text-secondary">GitHub Inbound</h2>
+              <span class="badge badge-outline badge-sm text-[10px]">GitHub → OCS</span>
+            </div>
+            <p class="text-xs text-base-content/60">Daftarkan URL ini sebagai webhook GitHub untuk auto-sync Issues & PRs.</p>
+
+            <div class="mt-3 space-y-2 text-sm">
+              <div>
+                <div class="mb-1 font-medium text-base-content text-xs">Webhook URL</div>
+                <div class="flex items-center gap-1">
+                  <code class="grow rounded-box bg-base-200 px-2 py-1.5 font-mono text-[10px] text-base-content/80 break-all select-all">
+                    {{ runtimeConfig.public.siteUrl || '' }}/api/integrations/{{ integrationId }}/webhook/github
+                  </code>
+                  <button class="btn btn-ghost btn-xs h-7 min-h-7" @click="copyGithubUrl">Copy</button>
+                </div>
               </div>
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Records Created</div>
-                <div class="mt-1 text-base-content/65">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsCreated || 0), 0) }} records created across all jobs.</div>
+
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
+                <div class="font-medium text-base-content text-xs">Secret</div>
+                <div class="text-[10px] text-base-content/65">
+                  Gunakan <span class="font-semibold">Webhook Secret</span> di atas. OCS memverifikasi
+                  <code class="bg-base-200 px-1 rounded">X-Hub-Signature-256</code>
+                </div>
               </div>
-              <div class="rounded-box bg-base-200/50 px-4 py-3">
-                <div class="font-medium text-base-content">Records Updated</div>
-                <div class="mt-1 text-base-content/65">{{ syncJobs.reduce((sum: number, j: any) => sum + (j.recordsUpdated || 0), 0) }} records updated across all jobs.</div>
+
+              <div class="rounded-box bg-base-200/50 px-3 py-2">
+                <div class="font-medium text-base-content text-xs">Events</div>
+                <div class="mt-1 flex flex-wrap gap-1">
+                  <span class="badge badge-ghost badge-sm text-[10px]">issues</span>
+                  <span class="badge badge-ghost badge-sm text-[10px]">pull_request</span>
+                  <span class="badge badge-ghost badge-sm text-[10px]">push</span>
+                </div>
               </div>
+
+              <div v-if="githubUrlCopied" class="alert alert-success py-1.5 min-h-0 text-[10px]">URL disalin ke clipboard.</div>
             </div>
           </div>
         </div>
@@ -372,16 +471,23 @@ import {
   IconAlertTriangle,
   IconDatabaseImport,
   IconPlugConnected,
+  IconEye,
+  IconEyeOff,
+  IconRefresh,
+  IconCopy,
+  IconCheck,
 } from '@tabler/icons-vue'
 
 definePageMeta({ layout: 'default' })
+
+const activeTab = ref<'records' | 'jobs' | 'deliveries' | 'mapping'>('records')
 
 const route = useRoute()
 const integrationId = Array.isArray(route.params.integrationId)
   ? route.params.integrationId[0]
   : String(route.params.integrationId || '')
 
-const { data: detailData, refresh: refreshDetail } = await useFetch(`/api/integrations/${integrationId}`)
+const { data: detailData, refresh: refreshDetail } = await useFetch<any>(`/api/integrations/${integrationId}`)
 
 const connection = computed(() => detailData.value?.connection || null)
 const mappingRows = computed(() => detailData.value?.mappings || [])
@@ -482,6 +588,34 @@ async function queueManualSync() {
 const rotatedApiKey = ref<string | null>(null)
 const rotatedKeyCopied = ref(false)
 const savingWebhook = ref(false)
+const githubUrlCopied = ref(false)
+const showWebhookSecret = ref(false)
+const webhookSecretCopied = ref(false)
+
+function copyWebhookSecret() {
+  if (!webhookForm.webhookSecret) return
+  navigator.clipboard.writeText(webhookForm.webhookSecret).then(() => {
+    webhookSecretCopied.value = true
+    setTimeout(() => { webhookSecretCopied.value = false }, 2000)
+  })
+}
+
+function generateWebhookSecret() {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  webhookForm.webhookSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  showWebhookSecret.value = true
+}
+
+const runtimeConfig = useRuntimeConfig()
+
+function copyGithubUrl() {
+  const url = `${runtimeConfig.public.siteUrl || window.location.origin}/api/integrations/${integrationId}/webhook/github`
+  navigator.clipboard.writeText(url).then(() => {
+    githubUrlCopied.value = true
+    setTimeout(() => { githubUrlCopied.value = false }, 2000)
+  })
+}
 
 async function saveWebhookConfig() {
   savingWebhook.value = true

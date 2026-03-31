@@ -65,6 +65,18 @@
       <div class="space-y-4">
         <div class="card border border-base-300 bg-base-100 shadow-sm">
           <div class="card-body">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 class="card-title text-lg">License plan catalog</h2>
+                <p class="text-sm text-base-content/70">Maintain the shared plan definitions used by every project-bound license record.</p>
+              </div>
+              <NuxtLink to="/settings/license-plans" class="btn btn-outline btn-sm">Open catalog</NuxtLink>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border border-base-300 bg-base-100 shadow-sm">
+          <div class="card-body">
             <h2 class="card-title text-lg">{{ t('settings.workspaceRules') }}</h2>
             <ul class="space-y-3 text-sm text-base-content/75">
               <li class="flex items-start gap-3">

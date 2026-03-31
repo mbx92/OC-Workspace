@@ -215,18 +215,39 @@ export const legalAiAssistSchema = z.discriminatedUnion('mode', [
 // --- Project Licenses ---
 export const createLicenseSchema = z.object({
   projectId: z.string().uuid(),
-  name: z.string().min(1).max(255),
-  type: z.enum(['software_subscription', 'api_key', 'ssl_certificate', 'domain', 'credential', 'other']),
+  clientName: z.string().min(1).max(255),
+  clientEmail: z.string().email().max(255).nullish(),
+  type: z.enum(['software_subscription', 'api_key', 'ssl_certificate', 'domain', 'credential', 'other']).default('other'),
   vendor: z.string().max(255).nullish(),
-  status: z.enum(['active', 'expiring_soon', 'expired', 'revoked']).default('active'),
+  vendorReference: z.string().max(500).nullish(),
+  domain: z.string().min(1).max(255),
+  planSlug: z.string().min(1).max(100),
+  features: z.array(z.string().min(1).max(100)).default([]),
+  isActive: z.boolean().default(true),
   renewalDate: z.string().nullish(),
   expiresAt: z.string().nullish(),
-  ownerUserId: z.string().uuid().nullish(),
-  vendorReference: z.string().max(500).nullish(),
   notes: z.string().nullish(),
 })
 
-export const updateLicenseSchema = createLicenseSchema.partial().omit({ projectId: true })
+export const updateLicenseSchema = createLicenseSchema.partial().omit({ projectId: true }).extend({
+  rotateKey: z.boolean().optional(),
+})
+
+export const validateLicenseSchema = z.object({
+  licenseKey: z.string().min(1).max(100),
+  domain: z.string().min(1).max(255),
+})
+
+export const createLicensePlanSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(1).max(100),
+  description: z.string().max(1000).nullish(),
+  features: z.array(z.string().min(1).max(100)).default([]),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(1).default(1),
+})
+
+export const updateLicensePlanSchema = createLicensePlanSchema.partial()
 
 // --- Integration Connections ---
 export const createIntegrationSchema = z.object({

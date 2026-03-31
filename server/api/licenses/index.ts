@@ -1,3 +1,5 @@
+import { createLicenseSchema } from '../../utils/validation'
+import { requireAuth, requireMinRole } from '../../utils/auth'
 import { listLicenses, createLicense } from '../../services/licenses'
 
 export default defineEventHandler(async (event) => {
